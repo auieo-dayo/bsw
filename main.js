@@ -192,7 +192,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // By BDS Basic
-app.use('/api/bds/send', basicAuth({
+app.use('/api/bds/', basicAuth({
   users: { "BDS_Send" : "BDS_Send" },
   challenge: false,           // 認証ダイアログを出す
   realm: 'BDS-Send-Path-Login'         // ダイアログに表示される領域名
@@ -208,9 +208,9 @@ app.post('/api/bds/send',async (req,res,next)=>{
         break;
       }
       case "death":{
-        const {source,reason} = body
+        const {source,reason,location} = body
         DeathtoDis(source,reason)
-        logmng.add({"type":"death","player":source,"data":`${source}(${reason})`,"reason":`${reason}`,"time":Date.now()})
+        logmng.add({"type":"death","player":source,"data":`${source}(${reason})`,"reason":`${reason}`,"location":location,"time":Date.now()})
         res.status(200).type("json").send({"status":true})
         break;
       }
@@ -236,6 +236,17 @@ app.post('/api/bds/send',async (req,res,next)=>{
     next(err)
   }
 })
+
+// app.post('/api/bds/pluginsend',async (req,res,next)=>{
+//   try {
+//     const body = req.body
+//     const {id,data} = body
+//     if (!id || !data) return res.sendStatus(400)
+//     pm.emit(`PLUGIN_EVENT_${id}`,data)
+//   } catch(err) {
+//     next(err)
+//   }
+// })
 
 //  Basic
 app.use('/', basicAuth({

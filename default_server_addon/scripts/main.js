@@ -70,7 +70,8 @@ world.afterEvents.entityDie.subscribe((ev)=>{
             info += source.damagingEntity.typeId
         }
     }
-    const body = {"type":"death","source":`${die.name}`,"reason":`${cause}(${info})`}
+    const location = die.location
+    const body = {"type":"death","source":`${die.name}`,"reason":`${cause}(${info})`,location}
     get(body)
 })
 
