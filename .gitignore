@@ -148,3 +148,5 @@ log/
 config/config.js
 .env
 
+# backup
+backup/

@@ -85,6 +85,7 @@ const logmng = {
   "add": (json = {type:"",data:"",datatype:"",time:NaN}) => {
     try {
       if (!json.type || !json.data || !json.time) return;
+      pm.emit(json.type,json)
       fs.ensureDirSync(logPath.folder);
 
       const filepath = path.join(logPath.folder, logPath.file());
@@ -93,6 +94,22 @@ const logmng = {
   }
 }
 
+// Plugin
+
+const PluginManager = require("./src/pluginManager")
+
+const apis = {
+  snedChat(name,msg){apis.sendCommand(`/tellraw ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
+  getPlayerList(){return onlinePlayer ?? []},
+  getBackupList(getAllBackupList=false){
+    const blist = get_backuplist("",getAllBackupList)
+    return blist?.data ?? []   
+  },
+  sendCommand(cmd,ishidden=false){sendCommand(cmd,ishidden)}
+}
+
+const pm = new PluginManager(apis)
+pm.loadPlugins()
 
 
 // BDS properties Path

@@ -1,0 +1,65 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "DefaultServerAddon",
+    "description": "DefaultServerAddon(from auieo)",
+    "uuid": "83728d14-756a-420a-a21d-09879210c271",
+    "version": [
+      1,
+      5,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      20,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "9e5e058e-266a-4cbf-a121-e362ffe3ec18",
+      "entry": "scripts/main.js",
+      "version": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "description": "DefaultServerAddon",
+      "type": "data",
+      "uuid": "3c41c66a-f414-449f-9260-8a645568753f",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "beta"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "beta"
+    },
+    {
+      "module_name": "@minecraft/server-admin",
+      "version": "beta"
+    },
+    {
+      "module_name": "@minecraft/server-net",
+      "version": "beta"
+    }
+  ],
+  "capabilities": [
+    "script_eval",
+    "world_dynamic_properties",
+    "experimental_custom_ui",
+    "command"
+  ]
+}

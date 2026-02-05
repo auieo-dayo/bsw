@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@minecraft/server": "^2.6.0-beta.1.26.0-preview.25",
+    "@minecraft/server-admin": "^1.0.0-beta.11940b24",
+    "@minecraft/server-net": "^1.0.0-beta.11940b24",
+    "@minecraft/server-ui": "^2.1.0-beta.1.26.0-preview.25"
+  }
+}
