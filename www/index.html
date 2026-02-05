@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BSW DashBoard</title>
+  <link rel="stylesheet" href="./index.css">
+</head>
+<body>
+  <menu>
+    <button id="main" onclick="set(false)">メイン</button>
+    <button id="console" onclick="set(true)">OPコンソール</button>
+    <img src="./img/dark.svg" id="LightDark" onclick="ChangeTheme()">
+  </menu>
+  
+  <main>
+    <div id="alert">
+      <h1>BDSのバージョンが最新ではありません</h1>
+      <p>現在のバージョン:<b><span id="nowBDSver">Loading...</span></b>
+        <br>
+        最新のBDSバージョン:<b><span id="latestBDSver">Loading...</span></b></p>
+    </div>
+    <div id="main_disp" class="disp">
+      <h1 class="b border-btm">ServerName</h1>
+      <h2 id="Sname" class="b">Loading...</h2>
+
+      <h1 class="b border-btm">LevelName</h1>
+      <h2 id="Lname" class="b">Loading...</h2>
+
+      <h1 class="b border-btm">Players</h1>
+      <h2 id="Pint" class="b">Loading...</h2>
+      <ul class="b" id="players">
+        <li>Loading...</li>
+      </ul>
+      <h1 class="b border-btm">System</h1>
+      <div id="system">
+        <div>
+          <h2 class="b">Memory Total</h2>
+          <h3 class="b" id="MemTotal">Loading...</h3>
+        </div>
+
+        <div>
+          <h2 class="b">Memory Free</h2>
+          <h3 class="b" id="MemFree">Loading...</h3>
+        </div>
+
+        <div>
+          <h2 class="b">Memory Percent</h2>
+          <h3 class="b" id="MemPar">Loading...</h3>
+          <input type="range" id="mempar" min="0" max="100"  style="pointer-events: none;width: 100%;" tabindex="-1"/>
+        </div>
+
+        <div>
+          <h2 class="b">Cpu Percent</h2>
+          <h3 class="b" id="cpu">Loading...</h3>
+          <input type="range" id="cpupar" min="0" max="100"  style="pointer-events: none;width: 100%;" tabindex="-1"/>
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+    <div id="console_disp" class="disp">
+      <div id="log">Loading...</div>
+      <div id="bar">
+        <input type="text" id="inputcmd">
+        <button id="submit">実行</button>
+      </div>
+    </div>
+  </main>
+  <script src="./index.js"></script>
+</body>
+</html>
