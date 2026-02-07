@@ -491,14 +491,16 @@ async function PlayerinfotoDis(json) {
 
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
-    const res = await couch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
-    const logoutdata = res.data.docs[0]
-    if (logoutdata) {
-      const date = new Date(logoutdata.timestamp)
-      const dateja = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}時${String(date.getMinutes()).padStart(2, "0")}分${String(date.getSeconds()).padStart(2, "0")}秒`
-      embed.setDescription(`[${playername}]の最終ログアウト情報\nログアウト場所:${logoutdata.location.x.toFixed(0)} ${logoutdata.location.y.toFixed(0)} ${logoutdata.location.z.toFixed(0)}\nログアウト時刻:${dateja}`)
-    }  else {
-      embed.setDescription(`[${playername}]の最終ログアウト情報が見つかりませんでした。`)
+    if (config.lastLocationLog.saveLocationLog) {
+      const res = await couch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
+      const logoutdata = res.data.docs[0]
+      if (logoutdata) {
+        const date = new Date(logoutdata.timestamp)
+        const dateja = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}時${String(date.getMinutes()).padStart(2, "0")}分${String(date.getSeconds()).padStart(2, "0")}秒`
+        embed.setDescription(`[${playername}]の最終ログアウト情報\nログアウト場所:${logoutdata.location.x.toFixed(0)} ${logoutdata.location.y.toFixed(0)} ${logoutdata.location.z.toFixed(0)}\nログアウト時刻:${dateja}`)
+      }  else {
+        embed.setDescription(`[${playername}]の最終ログアウト情報が見つかりませんでした。`)
+      }
     }
     
     embed.setColor(0xed0000)
