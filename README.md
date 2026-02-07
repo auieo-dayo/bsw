@@ -56,3 +56,5 @@ npm start
 - `plugin[event](data)` のようにログイベントを受け取れます（例: `PlayerJoin`, `chat` など）
 
 詳細は [docs/Plugins.md](docs/Plugins.md) を参照してください。
+
+> このプロジェクトでは、デフォルトのWebダッシュボードに Yusei Magic フォント（SIL Open Font License 1.1）を使用しています。

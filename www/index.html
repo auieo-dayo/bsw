@@ -8,8 +8,10 @@
 </head>
 <body>
   <menu>
-    <button id="main" onclick="set(false)">メイン</button>
-    <button id="console" onclick="set(true)">OPコンソール</button>
+    <button id="main" onclick="set(0)">メイン</button>
+    <button id="console" onclick="set(2)">バックアップリスト</button>
+    <button id="console" onclick="set(1)">OPコンソール</button>
+    
     <img src="./img/dark.svg" id="LightDark" onclick="ChangeTheme()">
   </menu>
   
@@ -67,6 +69,17 @@
       <div id="bar">
         <input type="text" id="inputcmd">
         <button id="submit">実行</button>
+      </div>
+    </div>
+
+    <div id="backup_disp" class="disp">
+      <div class="Backup_Menu">
+        <p>AllBackup:<span id="Backup_all">...</span></p>
+        <p>TodayBackup:<span id="Backup_today">...</span></p>
+        <p>LastAcquisition:<span id="Backup_last">...</span></p>
+      </div>
+
+      <div id="backup_list">
       </div>
     </div>
   </main>

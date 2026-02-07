@@ -1,18 +1,94 @@
+  let bdsver = ""
+// Backup
 
-let bdsver = ""
+
+function sortBackupsDescending(list) {
+  return list.sort((a, b) => {
+    const dateA = new Date(a.date.yyyy, a.date.MM - 1, a.date.dd, a.date.hh, a.date.mm, a.date.ss);
+    const dateB = new Date(b.date.yyyy, b.date.MM - 1, b.date.dd, b.date.hh, b.date.mm, b.date.ss);
+    return dateB - dateA; // 新しい順（降順）
+  });
+}
 
 
-let main = true
-function set(console=false) {
-  if (console) {
-    main = false
-    document.getElementById("console_disp").style.display = "block"
-    document.getElementById("main_disp").style.display = "none"
-  } else {
-    main = true
-    document.getElementById("console_disp").style.display = "none"
-    document.getElementById("main_disp").style.display = "block"
-  }
+async function backupset(url=`${location.origin}/api/backuplist`) {
+  const res = await get(url)
+  const json = await res.json()
+  const {allbackup,today} = json
+
+  const todaybackuplist = sortBackupsDescending(json.todaybackuplist)
+
+  document.getElementById("Backup_all").textContent = allbackup
+  document.getElementById("Backup_today").textContent = today
+
+  document.getElementById("backup_list").innerHTML=""
+
+  todaybackuplist.forEach((value,index)=>{
+      const {full,date} = value
+      const div = document.createElement("div")
+      if (full) div.classList.add("full")
+      if (index == 0) div.classList.add("latest")
+
+      const h1 = document.createElement("h1")
+      h1.textContent = `${String(date.hh).padStart(2, '0')}:${String(date.mm).padStart(2, '0')}`
+      
+
+      const span = document.createElement("span")
+      span.textContent = `:${String(date.ss).padStart(2, '0')}`
+      h1.appendChild(span)
+      
+      const h2 = document.createElement("h2")
+      h2.textContent = `${date.yyyy}/${date.MM}/${date.dd}`
+
+      const p = document.createElement("p")
+      if (full) p.textContent = "Full"
+      if (index == 0) p.textContent = "Latest"
+
+      if (full && index == 0) {
+          p.textContent = "Full | Latest"
+          div.classList.add("two")
+      }
+
+      
+      
+      div.appendChild(h1)
+      div.appendChild(h2)
+      div.appendChild(p)
+
+      document.getElementById("backup_list").appendChild(div)
+
+  })
+  const date = new Date()
+  document.getElementById("Backup_last").textContent = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`
+}
+
+
+
+
+
+let type = 0
+function set(t=NaN) {
+  switch(t) {
+    case 0 :
+      type = 0
+      document.getElementById("backup_disp").style.display = "none"
+      document.getElementById("console_disp").style.display = "none"
+      document.getElementById("main_disp").style.display = "block"
+      break;
+    case 1 :
+      type = 1
+      document.getElementById("backup_disp").style.display = "none"
+      document.getElementById("console_disp").style.display = "block"
+      document.getElementById("main_disp").style.display = "none"  
+      break;
+    case 2 :
+      type = 2
+      document.getElementById("backup_disp").style.display = "block"
+      document.getElementById("console_disp").style.display = "none"
+      document.getElementById("main_disp").style.display = "none"  
+      break;
+    }
+
 }
 
 const modes = [
@@ -81,6 +157,7 @@ if (location.search == "?debug") return
     p.classList.add(log.type)
     document.getElementById("log").appendChild(p)
   }
+  
   document.getElementById("log").scrollTo({"top":document.getElementById("log").scrollHeight})
 
   // WebSocket
@@ -115,8 +192,12 @@ socket = new WebSocket(`${protocol}://${location.hostname}:${location.port}/ws`)
     console.error("エラー:", err);
   });
 })()
+
 setInterval(async()=>{
   if (location.search == "?debug") return
+  // Backup
+  await backupset()
+  // Main
   const infores = await get(`${location.origin}/api/info`)
   const infojson = await infores.json()
   document.getElementById("Sname").textContent = infojson.BDS.servername
@@ -165,3 +246,7 @@ document.getElementById("submit").addEventListener("click",()=>{
   const latest = latest_json.linux.stable
   bdsver = latest
 })()
+
+
+
+

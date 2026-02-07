@@ -1,16 +1,28 @@
 
+@font-face {
+  font-family: "YuseiMagic";
+  src:
+    local("YuseiMagic"),
+    url("./YuseiMagic.ttf") format("truetype")
+}
+* {
+    font-family: "YuseiMagic";
+}
+html,body {
+    height: 100%;
+}
 body {
     margin: 0;
     padding: 0;
     background-color: #b1b1b1;
     display: flex;
     flex-wrap: nowrap;
-    overflow-y: hidden;
     transition: 0.3s;
 }
 menu * {
     margin: 0;
     padding: 0;
+    font-family: sans-serif;
 }
 menu {
     /* opacity: 0.5; */
@@ -18,7 +30,7 @@ menu {
     padding: 0;
     background-color: #777777;
     border-right: 3px dashed #000;
-    height: 100vh;
+    height: 99.5%;
     width: 100px;
     position:sticky;
     top: 0;
@@ -27,9 +39,9 @@ menu button {
     margin: 0;
     padding: 0;
     width: 100%;
-    margin-top: 50%;
+    margin-top: 30%;
     margin-bottom: 0%;
-    height: 40%;
+    height: 27%;
     transition: 0.3s;
     background-color: #5a5a5a;
     color: #fff;
@@ -221,3 +233,62 @@ main {
         display: block;
     }
 }
+
+/* Backup */
+#backup_disp {
+    display: none;
+}
+#backup_list {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+    gap: 20px;
+}
+
+#backup_list div {
+    border: 2px dashed #000;
+    padding-left: 20px;
+    padding-right: 20px;
+    height: max-content;
+    display: block;
+    border-radius: 10px;
+}
+#backup_list div h1 {
+    font-size:1.6rem;
+    text-align: center;
+    letter-spacing:2px;
+}
+#backup_list div h1 span{
+    font-size:1rem;
+}
+#backup_list div h2 {
+    font-size:1rem;
+    text-align: center;
+}
+#backup_list div p {
+    font-size:1rem;
+    text-align: center;
+}
+.latest {background-color: #25c4d967;}
+.full {background-color: #d9252567;}
+.Backup_Menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.Backup_Menu p {
+    padding-right: 20px;
+    font-size: 1.4rem;
+    width: max-content;
+    margin: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.Backup_Menu span {
+    padding-left: 20px;
+    font-size: 1.5rem;
+    letter-spacing:2px;
+
+}
+
