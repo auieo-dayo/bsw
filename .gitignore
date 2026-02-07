@@ -138,15 +138,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# BDS
-bds/
+#VSCode
+.vscode/
 
-#log
+
+#BSW関連
+bds/
 log/
 
-#conf
 config/config.js
 .env
 
-# backup
 backup/
