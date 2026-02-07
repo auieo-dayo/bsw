@@ -496,7 +496,7 @@ async function PlayerinfotoDis(json) {
   } else {
     embed.setTitle(`[${playername}]の基本情報`)
     const dim = `Dimension: \`${data.dimension}\``
-    const location = `Location: \*${data.location.x.toFixed(0)} ${data.location.y.toFixed(0)} ${data.location.z.toFixed(0)}\``
+    const location = `Location: \`${data.location.x.toFixed(0)} ${data.location.y.toFixed(0)} ${data.location.z.toFixed(0)}\``
     const hp = `HP: \`${data.hp.now}/${data.hp.max}\``
     const gm = `GameMode: \`${data.gamemode}\``
     const mainhand = `MainHandItem: \`${data.mainhand}\``
@@ -585,10 +585,10 @@ client.on(discord.Events.MessageCreate, message => {
       // プレフィックスで始まっていたら
       if (config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
-          message.content.startsWith(pre)
+          message.content.startsWith(`${pre} `)
         )
       if (!prefix) return
-      const content = message.content.slice(prefix.length)
+      const content = message.content.slice(prefix.length+1)
       const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","\'").replaceAll("\\","\\\\'")
       sendCommand(`send "${json}"`)
       }
