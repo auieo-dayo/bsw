@@ -1,5 +1,5 @@
 // Bedrock Server Wrapper  - Default-Server-Addon
-import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause, EntityComponent, EquipmentSlot, InputButton, GameMode } from"@minecraft/server";
+import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause, EntityComponent, EquipmentSlot, InputButton, GameMode, ItemType, ItemTypes, ItemComponentTypes } from"@minecraft/server";
 import * as ui from "@minecraft/server-ui";
 import { SecretString, transferPlayer } from "@minecraft/server-admin";
 import * as net from "@minecraft/server-net"
@@ -184,7 +184,8 @@ system.beforeEvents.startup.subscribe((ev)=>{
                     returnjson.data.location = player.location
                     returnjson.data.hp.now = player.getComponent("minecraft:health").currentValue.toFixed(0)
                     returnjson.data.gamemode = player.getGameMode()
-                    returnjson.data.mainhand = player.getComponent(EntityComponentTypes.Equippable).getEquipment(EquipmentSlot.Mainhand).typeId
+                    const mainhand = player.getComponent(EntityComponentTypes.Equippable).getEquipment(EquipmentSlot.Mainhand)
+                    returnjson.data.mainhand = mainhand?.typeId ?? "Null"
 
                 }
                 post(returnjson)
