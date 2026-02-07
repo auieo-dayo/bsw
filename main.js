@@ -592,9 +592,9 @@ client.on(discord.Events.MessageCreate, message => {
     // チャットを送信
     chatmng.sendtoMC(message.author.displayName,message.content)
 
-    } else if (config.Discord.notifications.playerInfoToAdmin.enabled && message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
+    } else if (message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
       // プレフィックスで始まっていたら
-      if (config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
+      if (config.Discord.notifications.playerInfoToAdmin.enabled &&　config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )
