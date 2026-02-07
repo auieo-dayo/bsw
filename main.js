@@ -226,6 +226,11 @@ app.post('/api/bds/send',async (req,res,next)=>{
           res.status(200).type("json").send({"status":true})
         break;
       }
+      case "playerinfo": {
+          PlayerinfotoDis(body)
+          res.status(200).type("json").send({"status":true})
+          break;
+      }
       default:{
         res.sendStatus(400).type("json").send({"status":false})
         break;
@@ -431,11 +436,13 @@ try {
  * @type {{
  *   chat: import("discord.js").TextChannel,
  *   serverStatus: import("discord.js").TextChannel
+ *   playerinfo: import("discord.js").TextChannel
  * }}
  */
 const channels = {
   "chat": null,
-  "serverStatus": null
+  "serverStatus": null,
+  "playerinfo": null
 }
 
 async function LLtoDis(name,type) {
@@ -472,6 +479,35 @@ async function DeathtoDis(name,data) {
   await channels.chat.send({ embeds: [embed] });
 }
 
+async function PlayerinfotoDis(json) {
+  if (!client.isReady()) return
+  if (!channels.playerinfo) return
+  if (!config.Discord.notifications.playerInfoToAdmin.enabled) return
+
+  const {playername,iserr,messageid,data} = json
+
+  const embed = new discord.EmbedBuilder()
+  embed.setFooter({ text: `Time:${nowtime().full}` })
+
+  if (iserr) {
+    embed.setTitle(`[${playername}]が見つかりませんでした`)
+    embed.setDescription(`Error`)
+    embed.setColor(0xed0000)
+  } else {
+    embed.setTitle(`[${playername}]の基本情報`)
+    const dim = `Dimension: \`${data.dimension}\``
+    const location = `Location: \*${data.location.x.toFixed(0)} ${data.location.y.toFixed(0)} ${data.location.z.toFixed(0)}\``
+    const hp = `HP: \`${data.hp.now}/${data.hp.max}\``
+    const gm = `GameMode: \`${data.gamemode}\``
+    const mainhand = `MainHandItem: \`${data.mainhand}\``
+    embed.setDescription(`${dim}\n${location}\n${hp}\n${gm}\n${mainhand}`)
+    embed.setColor(0xabd656)
+  }
+
+  const message = await channels.playerinfo.messages.fetch(messageid)
+  await message.reply({ embeds: [embed] });
+}
+
 const chatmng = {
   "sendtoMC": async(name,message) => {
     if (config.console.chatLogToConsole) console.log(chalk.yellow(`[D]${name}:${message}`))
@@ -502,6 +538,10 @@ client.once(discord.Events.ClientReady, async () => {
     try {
         if (config.Discord.notifications.chat.enabled) {
           channels.chat = await client.channels.fetch(`${config.Discord.notifications.chat.channelId}`,{force: true,allowUnknownGuild: true});
+        }
+
+        if (config.Discord.notifications.playerInfoToAdmin.enabled) {
+          channels.playerinfo = await client.channels.fetch(`${config.Discord.notifications.playerInfoToAdmin.channelId}`,{force: true,allowUnknownGuild: true});
         }
 
 
@@ -540,6 +580,18 @@ client.on(discord.Events.MessageCreate, message => {
     }
     // チャットを送信
     chatmng.sendtoMC(message.author.displayName,message.content)
+
+    } else if (config.Discord.notifications.playerInfoToAdmin.enabled && message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
+      // プレフィックスで始まっていたら
+      if (config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
+        const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
+          message.content.startsWith(pre)
+        )
+      if (!prefix) return
+      const content = message.content.slice(prefix.length)
+      const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","\'").replaceAll("\\","\\\\'")
+      sendCommand(`send "${json}"`)
+      }
     }
 });
 

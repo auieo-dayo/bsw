@@ -1,10 +1,10 @@
 // Bedrock Server Wrapper  - Default-Server-Addon
-import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause } from"@minecraft/server";
+import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause, EntityComponent, EquipmentSlot, InputButton, GameMode } from"@minecraft/server";
 import * as ui from "@minecraft/server-ui";
 import { SecretString, transferPlayer } from "@minecraft/server-admin";
 import * as net from "@minecraft/server-net"
 
-async function get(body) {
+async function post(body) {
     let status_code=NaN
     try {
         if (!body.type) return
@@ -39,7 +39,7 @@ world.beforeEvents.chatSend.subscribe((ev)=>{
     const msg = ev.message
     const sender = ev.sender
     const body = {"type":"chat","sender":sender.name,msg}
-    get(body)
+    post(body)
 
     if (msg.startsWith("!debug ") && sender.hasTag("admin")) {
         
@@ -72,7 +72,7 @@ world.afterEvents.entityDie.subscribe((ev)=>{
     }
     const location = die.location
     const body = {"type":"death","source":`${die.name}`,"reason":`${cause}(${info})`,location}
-    get(body)
+    post(body)
 })
 
 system.beforeEvents.startup.subscribe((ev)=>{
@@ -98,7 +98,7 @@ system.beforeEvents.startup.subscribe((ev)=>{
                 isfull = true
             }
             const body = {"type":"backup","source":`${name}`,isfull,"isEntity":entity}
-            get(body)
+            post(body)
             if (entity) origin.sourceEntity.sendMessage("§aバックアップ開始指示を送りました...")
         })
       })
@@ -163,6 +163,31 @@ system.beforeEvents.startup.subscribe((ev)=>{
                         p.sendMessage(text)
                     }
                 }
+            } else if (json.type == "getplayerinfo") {
+                const {playername,messageid} = json
+                
+                const returnjson = {"type":"playerinfo",playername,"iserr":false,messageid,"data": {
+                    "dimension": "",
+                    "location": {"x": NaN,"y": NaN,"z": NaN},
+                    "hp": {"now":NaN,"max":20},
+                    "gamemode": "",
+                    "mainhand": ""
+                }}
+
+                const player = world.getAllPlayers().find((p)=>{
+                    return p.name == playername
+                })
+
+                if (!player) returnjson.iserr = true; else {
+
+                    returnjson.data.dimension = player.dimension.id
+                    returnjson.data.location = player.location
+                    returnjson.data.hp.now = player.getComponent("minecraft:health").currentValue.toFixed(0)
+                    returnjson.data.gamemode = player.getGameMode()
+                    returnjson.data.mainhand = player.getComponent(EntityComponentTypes.Equippable).getEquipment(EquipmentSlot.Mainhand).typeId
+
+                }
+                post(returnjson)
             }
         })
       })
