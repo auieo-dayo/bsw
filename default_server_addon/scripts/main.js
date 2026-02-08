@@ -3,6 +3,7 @@ import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCu
 import * as ui from "@minecraft/server-ui";
 import { SecretString, transferPlayer } from "@minecraft/server-admin";
 import * as net from "@minecraft/server-net"
+import { json } from "express";
 
 async function post(body) {
     let status_code=NaN
@@ -29,12 +30,14 @@ async function post(body) {
 }
 
 
-
+// プレイヤー退出ログ
 
 world.beforeEvents.playerLeave.subscribe((ev)=>{
     const player = ev.player
     console.log(JSON.stringify({"type":"Logger","cmd":"playerLeave","source":`${player.name}(${player.location.x} ${player.location.y} ${player.location.z})`,"data":"","isEntity":true}))
 })
+
+// チャットを送信
 world.beforeEvents.chatSend.subscribe((ev)=>{
     const msg = ev.message
     const sender = ev.sender
@@ -51,6 +54,8 @@ world.beforeEvents.chatSend.subscribe((ev)=>{
         }
     }
 })
+
+// 死亡ログを送信
 world.afterEvents.entityDie.subscribe((ev)=>{
     const source = ev.damageSource
     const die = ev.deadEntity
@@ -74,6 +79,21 @@ world.afterEvents.entityDie.subscribe((ev)=>{
     const body = {"type":"death","source":`${die.name}`,"reason":`${cause}(${info})`,location}
     post(body)
 })
+
+// あ
+
+system.runInterval(()=>{
+    const playerlist = world.getAllPlayers()
+    if (playerlist.length == 0) return
+    const players = playerlist.map((p)=>{
+        const json = {"name":p.name,"tags":p.getTags()}
+        return json
+    })
+    post({"type":"syncplayerlist","data": players})
+},20*60*10)
+
+
+// コマンド
 
 system.beforeEvents.startup.subscribe((ev)=>{
     ev.customCommandRegistry.registerCommand({

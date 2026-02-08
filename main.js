@@ -22,9 +22,9 @@ const nowtime = require("./src/nowtime")
 /**
  * @type {import('axios').AxiosInstance | undefined}
  */
-let couch
+let lllCouch
 if (config.lastLocationLog.saveLocationLog) {
-  couch = axios.create({
+  lllCouch = axios.create({
     baseURL: `${config.lastLocationLog.CouchDB.baseurl}/${config.lastLocationLog.CouchDB.dbname}`,
     auth: {
       username: `${config.lastLocationLog.CouchDB.user.name}`,
@@ -215,21 +215,30 @@ app.post('/api/bds/send',async (req,res,next)=>{
         break;
       }
       case "backup":{
-          const {source,isfull,isEntity} = body
-          if (isfull) {
-            await backup(true,true)
-            if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cFull Backup Success"}]}`)
-          } else {
-            await backup(true)
-            if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cBackup Success"}]}`)
-          }
-          res.status(200).type("json").send({"status":true})
+        const {source,isfull,isEntity} = body
+        if (isfull) {
+          await backup(true,true)
+          if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cFull Backup Success"}]}`)
+        } else {
+          await backup(true)
+          if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cBackup Success"}]}`)
+        }
+        res.status(200).type("json").send({"status":true})
         break;
       }
       case "playerinfo": {
-          PlayerinfotoDis(body)
-          res.status(200).type("json").send({"status":true})
-          break;
+        PlayerinfotoDis(body)
+        res.status(200).type("json").send({"status":true})
+        break;
+      }
+      case "syncplayerlist": {
+        const data = body?.data
+        if (Array.isArray(data) && data.every(item => typeof item === "object" && item !== null)) {
+          onlinePlayer = data
+        }
+        res.status(200).type("json").send({"status":true})
+        
+        break;
       }
       default:{
         res.sendStatus(400).type("json").send({"status":false})
@@ -492,7 +501,7 @@ async function PlayerinfotoDis(json) {
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
     if (config.lastLocationLog.saveLocationLog) {
-      const res = await couch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
+      const res = await lllCouch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
       const logoutdata = res.data.docs[0]
       if (logoutdata) {
         const date = new Date(logoutdata.timestamp)
@@ -933,7 +942,7 @@ rl.on('line', (line) => {
     if (/^\[.* INFO\] Player Spawned: .* xuid: .*, pfid:.*$/.test(line)) {
         const playername = String(line.replace(/^\[.* INFO\] Player Spawned: /,"").replace(/ xuid:.*$/,""))
         const xuid = Number(line.replace(/^\[.* INFO\] Player Spawned: .* xuid: /,"").replace(/, pfid: .*$/,""))
-        const json = {"name":playername,"xuid":xuid}
+        const json = {"name":playername,"tags":[""]}
         logmng.add({"type":"PlayerJoin","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerJoin","data":playername})
         onlinePlayer.push(json)
@@ -946,13 +955,13 @@ rl.on('line', (line) => {
     if (/^\[.* INFO\] Player disconnected: .*, xuid: .*, pfid:.*$/.test(line)) {
         const playername = String(line.replace(/^\[.* INFO\] Player disconnected: /,"").replace(/, xuid: .*, pfid: .*$/,""))
         const xuid = Number(line.replace(/^\[.* INFO\] Player disconnected: .*, xuid: /,"").replace(/, pfid: .*$/,""))
-        const json = {"name":playername,"xuid":xuid}
+        const json = {"name":playername,"tags":[""]}
 
         logmng.add({"type":"PlayerLeave","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerLeave","data":playername})
 
         onlinePlayer.forEach((value,index)=>{
-            if (JSON.stringify(value) == JSON.stringify(json)) {
+            if (value.name == json.name) {
                 onlinePlayer.splice(index,1)
             }
         })
@@ -1007,7 +1016,7 @@ rl.on('line', (line) => {
             const playername = source.replace(/\(.* .* .*\)/,"")
             const [x, y, z] = source.replace(playername,"").replace("(","").replace(")","").split(" ").map(Number)
             const json = {playername,"location":{x,y,z},"timestamp":Date.now(),worldname}
-            const res = await couch.post("/",json)
+            const res = await lllCouch.post("/",json)
             if (res.status < 200 || res.status >= 300) {
               const errtext = `(${res.status})${res.data}`
               console.error(`[NODE-ERR]${chalk.red(errtext)}`);
