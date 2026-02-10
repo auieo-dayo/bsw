@@ -497,12 +497,14 @@ try {
  *   chat: import("discord.js").TextChannel,
  *   serverStatus: import("discord.js").TextChannel
  *   playerinfo: import("discord.js").TextChannel
+ *   deathinfo: import("discord.js").TextChannel
  * }}
  */
 const channels = {
   "chat": null,
   "serverStatus": null,
-  "playerinfo": null
+  "playerinfo": null,
+  "deathinfo": null
 }
 
 async function LLtoDis(name,type) {
@@ -579,6 +581,40 @@ async function PlayerinfotoDis(json) {
   await message.reply({ embeds: [embed] });
 }
 
+async function DeathinfotoDis(playername) {
+  if (!client.isReady()) return
+  if (!channels.deathinfo) return
+  if (!config.Discord.notifications.deathInfoToAdmin.enabled) return
+
+
+  const embed = new discord.EmbedBuilder()
+  embed.setFooter({ text: `Time:${nowtime().full}` })
+
+  embed.setTitle(`[${playername}]の死亡情報`)
+  if (config.deathLocationLog.saveDeathLocationLog) {
+    const res = await dllCouch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
+    const deathdata = res.data.docs
+    if (!deathdata[0]) {
+      embed.setDescription(`[${playername}]の死亡情報が見つかりませんでした。`)
+      embed.setColor(0xed0000)
+    } else {
+      let text = ""
+      deathdata.forEach((v)=>{
+      const date = new Date(v.timestamp)
+        const dateja = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}時${String(date.getMinutes()).padStart(2, "0")}分${String(date.getSeconds()).padStart(2, "0")}秒`
+        text+=`- ${dateja}\n\`(${v.location.x.toFixed(0)} ${v.location.y.toFixed(0)} ${v.location.z.toFixed(0)},${v.data})\`\n\n`
+      })
+      embed.setDescription(text)
+      embed.setColor(0x1fd15e)
+  }
+  }
+  
+  
+
+  const message = await channels.playerinfo.messages.fetch(messageid)
+  await message.reply({ embeds: [embed] });
+}
+
 const chatmng = {
   "sendtoMC": async(name,message) => {
     if (config.console.chatLogToConsole) console.log(chalk.yellow(`[D]${name}:${message}`))
@@ -613,6 +649,10 @@ client.once(discord.Events.ClientReady, async () => {
 
         if (config.Discord.notifications.playerInfoToAdmin.enabled) {
           channels.playerinfo = await client.channels.fetch(`${config.Discord.notifications.playerInfoToAdmin.channelId}`,{force: true,allowUnknownGuild: true});
+        }
+
+        if (config.Discord.notifications.deathInfoToAdmin.enabled) {
+          channels.deathinfo = await client.channels.fetch(`${config.Discord.notifications.deathInfoToAdmin.channelId}`,{force: true,allowUnknownGuild: true});
         }
 
 
@@ -653,15 +693,27 @@ client.on(discord.Events.MessageCreate, message => {
     chatmng.sendtoMC(message.author.displayName,message.content)
 
     } else if (message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
-      // プレフィックスで始まっていたら
+      // playerinfo プレフィックスで始まっていたら
       if (config.Discord.notifications.playerInfoToAdmin.enabled && config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )
-      if (!prefix) return
-      const content = message.content.slice(prefix.length+1)
-      const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","\'").replaceAll("\\","\\\\'")
-      sendCommand(`send "${json}"`)
+        if (prefix) {
+          const content = message.content.slice(prefix.length+1)
+          const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","\'").replaceAll("\\","\\\\'")
+          sendCommand(`send "${json}"`)
+        }
+     } 
+
+      // deathinfo プレフィックスで始まっていたら
+      if (config.Discord.notifications.deathInfoToAdmin.enabled && config.Discord.notifications.deathInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
+        const prefix = config.Discord.notifications.deathInfoToAdmin.prefix.find(pre =>
+          message.content.startsWith(`${pre} `)
+        )
+      if (prefix){ 
+        const content = message.content.slice(prefix.length+1)
+        DeathinfotoDis(content)
+        }
       }
     }
 });

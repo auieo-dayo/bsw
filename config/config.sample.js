@@ -44,6 +44,14 @@ const config = {
                 "channelId": "",
                 // プレフィックスの設定 (デフォルトだと?p Playerか?playerinfo Playerで取得)
                 "prefix": ["?p","?playerinfo"]
+            },
+            "deathInfoToAdmin": {
+                // 管理者用チャンネルからプレイヤーの簡単な情報を取得できるようにするか
+                "enabled": true,
+                // 管理者用チャンネルID
+                "channelId": "1456623336925958360",
+                // プレフィックスの設定 (デフォルトだと?d Playerか?deathinfo Playerで取得)
+                "prefix": ["?d","?deathinfo"]
             }
         },
     },
@@ -70,7 +78,7 @@ const config = {
             "baseurl": "https://example.com",
             // DBの名前
             "dbname": "lastlocation",
-            // ユーザーの設定
+            // DBの管理者ユーザーの設定
             "user": {
                 "name": "admin",
                 "pass": "admin"
@@ -87,7 +95,7 @@ const config = {
             "baseurl": "https://example.com",
             // DBの名前
             "dbname": "deathlocation",
-            // ユーザーの設定
+            // DBの管理者ユーザーの設定
             "user": {
                 "name": "admin",
                 "pass": "admin"
