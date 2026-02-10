@@ -251,7 +251,7 @@ app.post('/api/bds/send',async (req,res,next)=>{
         // Couch
         if (config.deathLocationLog.saveDeathLocationLog) {
           try {
-            const json = {playername:source,location,"timestamp":Date.now(),worldname}
+            const json = {playername:source,"data":`${source}(${reason})`,reason,location,"timestamp":Date.now(),worldname}
             const res = await dllCouch.post("/",json)
             if (res.status < 200 || res.status >= 300) {
               const errtext = `(${res.status})${res.data}`
