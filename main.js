@@ -31,8 +31,44 @@ if (config.lastLocationLog.saveLocationLog) {
       password: `${config.lastLocationLog.CouchDB.user.pass}`
     }
 });
+
+lllCouch.get("/_index").then((res)=>{
+let lllCIndex = false
+res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") lllCIndex = true})
+if (!lllCIndex) lllCouch.post("/_index",{
+  "index": {
+    "fields": ["playername", "timestamp"]
+  },
+  "name": "player_timestamp_index"
+}) 
+})
 }
 
+// lastlocationlog
+/**
+ * @type {import('axios').AxiosInstance | undefined}
+ */
+let dllCouch
+if (config.deathLocationLog.saveDeathLocationLog) {
+  dllCouch = axios.create({
+    baseURL: `${config.deathLocationLog.CouchDB.baseurl}/${config.deathLocationLog.CouchDB.dbname}`,
+    auth: {
+      username: `${config.deathLocationLog.CouchDB.user.name}`,
+      password: `${config.deathLocationLog.CouchDB.user.pass}`
+    }
+});
+
+dllCouch.get("/_index").then((res)=>{
+let dllCIndex = false
+res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") dllCIndex = true})
+if (!dllCIndex) dllCouch.post("/_index",{
+  "index": {
+    "fields": ["playername", "timestamp"]
+  },
+  "name": "player_timestamp_index"
+}) 
+})
+}
 
 
 // project-root
@@ -211,6 +247,21 @@ app.post('/api/bds/send',async (req,res,next)=>{
         const {source,reason,location} = body
         DeathtoDis(source,reason)
         logmng.add({"type":"death","player":source,"data":`${source}(${reason})`,"reason":`${reason}`,"location":location,"time":Date.now()})
+
+        // Couch
+        if (config.deathLocationLog.saveDeathLocationLog) {
+          try {
+            const json = {playername:source,location,"timestamp":Date.now(),worldname}
+            const res = await dllCouch.post("/",json)
+            if (res.status < 200 || res.status >= 300) {
+              const errtext = `(${res.status})${res.data}`
+              console.error(`[NODE-ERR]${chalk.red(errtext)}`);
+          }
+          } catch(e) {
+            console.error(`[NODE-ERR]${chalk.red(e.message)}`);
+          }
+        }
+
         res.status(200).type("json").send({"status":true})
         break;
       }
@@ -603,7 +654,7 @@ client.on(discord.Events.MessageCreate, message => {
 
     } else if (message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
       // プレフィックスで始まっていたら
-      if (config.Discord.notifications.playerInfoToAdmin.enabled &&　config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
+      if (config.Discord.notifications.playerInfoToAdmin.enabled && config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )

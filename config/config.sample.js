@@ -76,6 +76,23 @@ const config = {
                 "pass": "admin"
             }
         }
+    },
+    // 死亡時に座標ログを保存
+    "deathLocationLog": {
+        // 座標を自動で保存するかどうか
+        "saveDeathLocationLog": false,
+        // CouchDBの設定
+        "CouchDB": {
+            // ベースのDBのURL
+            "baseurl": "https://example.com",
+            // DBの名前
+            "dbname": "deathlocation",
+            // ユーザーの設定
+            "user": {
+                "name": "admin",
+                "pass": "admin"
+            }
+        }
     }
 }
 module.exports = config
