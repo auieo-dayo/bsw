@@ -581,11 +581,11 @@ async function PlayerinfotoDis(json) {
   await message.reply({ embeds: [embed] });
 }
 
-async function DeathinfotoDis(playername) {
+async function DeathinfotoDis(playername,messageid) {
   if (!client.isReady()) return
   if (!channels.deathinfo) return
   if (!config.Discord.notifications.deathInfoToAdmin.enabled) return
-
+  if (!messageid) return
 
   const embed = new discord.EmbedBuilder()
   embed.setFooter({ text: `Time:${nowtime().full}` })
@@ -712,7 +712,7 @@ client.on(discord.Events.MessageCreate, message => {
         )
       if (prefix){ 
         const content = message.content.slice(prefix.length+1)
-        DeathinfotoDis(content)
+        DeathinfotoDis(content,message.id)
         }
       }
     }
