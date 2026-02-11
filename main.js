@@ -21,56 +21,46 @@ const nowtime = require("./src/nowtime")
 
 
 
+function initCouch(baseurl,dbname,User) {
+const couch = axios.create({
+    baseURL: `${baseurl}/${dbname}`,
+    auth: {
+      username: `${User.user.name}`,
+      password: `${User.user.pass}`
+    }
+})
+
+couch.get("/_index").then((res)=>{
+let ptindexflag = false
+res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") ptindexflag = true})
+if (!ptindexflag) couch.post("/_index",{
+  "index": {
+    "fields": ["playername", "timestamp"]
+  },
+  "name": "player_timestamp_index"
+}).then(()=>{
+  return couch
+})
+})
+}
+
+
 // lastlocationlog
 /**
  * @type {import('axios').AxiosInstance | undefined}
  */
 let lllCouch
 if (config.lastLocationLog.saveLocationLog) {
-  lllCouch = axios.create({
-    baseURL: `${config.lastLocationLog.CouchDB.baseurl}/${config.lastLocationLog.CouchDB.dbname}`,
-    auth: {
-      username: `${config.lastLocationLog.CouchDB.user.name}`,
-      password: `${config.lastLocationLog.CouchDB.user.pass}`
-    }
-});
-
-lllCouch.get("/_index").then((res)=>{
-let lllCIndex = false
-res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") lllCIndex = true})
-if (!lllCIndex) lllCouch.post("/_index",{
-  "index": {
-    "fields": ["playername", "timestamp"]
-  },
-  "name": "player_timestamp_index"
-}) 
-})
+  lllCouch = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user) 
 }
 
-// lastlocationlog
+// deathlocationlog
 /**
  * @type {import('axios').AxiosInstance | undefined}
  */
 let dllCouch
 if (config.deathLocationLog.saveDeathLocationLog) {
-  dllCouch = axios.create({
-    baseURL: `${config.deathLocationLog.CouchDB.baseurl}/${config.deathLocationLog.CouchDB.dbname}`,
-    auth: {
-      username: `${config.deathLocationLog.CouchDB.user.name}`,
-      password: `${config.deathLocationLog.CouchDB.user.pass}`
-    }
-});
-
-dllCouch.get("/_index").then((res)=>{
-let dllCIndex = false
-res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") dllCIndex = true})
-if (!dllCIndex) dllCouch.post("/_index",{
-  "index": {
-    "fields": ["playername", "timestamp"]
-  },
-  "name": "player_timestamp_index"
-}) 
-})
+  dllCouch = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user) 
 }
 
 
@@ -125,11 +115,11 @@ const logmng = {
     try {
       if (!json.type || !json.data || !json.time) return;
       pm.emit(json.type,json)
-      fs.ensureDirSync(logPath.folder);
-
       const filepath = path.join(logPath.folder, logPath.file());
       fs.appendFileSync(filepath, JSON.stringify(json)+"\n");
-    } catch (err) {}
+    } catch (err) {
+      console.log(`LogMNG[Error]:${err.message}`)
+    }
   }
 }
 
@@ -1213,13 +1203,17 @@ function OnError(err) {
   logmng.add({"type":"server","datatype":"str","data":`ERROR - ${err.name} | ${err.message}`,"time":Date.now()});
 
   (async()=>{
-    if (config.Discord.enabled && channels.serverStatus &&config.Discord.notifications.serverStatus.enabled&&client.isReady()) {
-      const serverErrEmbed = new discord.EmbedBuilder()
-      .setTitle(`サーバーで例外エラーが発生しました${err.name}(${err.message})`)
-      .setDescription(`[${servername}]${worldname}`)
-      .setColor(0xf54242)
-      .setFooter({ text: `Time:${nowtime().full}` })
-      await channels.serverStatus.send({embeds:[serverErrEmbed]})
+    try {
+      if (config.Discord.enabled && channels.serverStatus &&config.Discord.notifications.serverStatus.enabled&&client.isReady()) {
+        const serverErrEmbed = new discord.EmbedBuilder()
+        .setTitle(`サーバーで例外エラーが発生しました${err.name}(${err.message})`)
+        .setDescription(`[${servername}]${worldname}`)
+        .setColor(0xf54242)
+        .setFooter({ text: `Time:${nowtime().full}` })
+        await channels.serverStatus.send({embeds:[serverErrEmbed]})
+      }
+    }catch(e) {
+        console.error(chalk.red("例外通知失敗:", e.message));
     }
   })();
 
