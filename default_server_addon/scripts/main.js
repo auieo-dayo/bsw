@@ -3,30 +3,66 @@ import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCu
 import * as ui from "@minecraft/server-ui";
 import { SecretString, transferPlayer } from "@minecraft/server-admin";
 import * as net from "@minecraft/server-net"
-import { json } from "express";
 
-async function post(body) {
-    let status_code=NaN
-    try {
-        if (!body.type) return
-        const req = new net.HttpRequest(`http://localhost:3000/api/bds/send`)
-        req.setMethod("Post")
-        const basic = new SecretString("Basic QkRTX1NlbmQ6QkRTX1NlbmQ=")
-        req.addHeader("authorization",basic)
-        req.addHeader('Content-Type', 'application/json')
-        req.setBody(JSON.stringify(body))
-        const res = await net.http.request(req)
-        status_code = res.status
-        if (res.status == 200) {
-            // 成功
-        } else {
-            console.log(`[Sending] - ${res.status}`)
-            world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました:${res.status}\n管理者に連絡してください..."}]}`)
-        }
-    } catch(e) {
-        console.error(e.message)
-        world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました:${status_code}\n管理者に連絡してください..."}]}`)
+function btoa(str) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let result = "";
+    let i;
+    for (i = 0; i < str.length; i += 3) {
+        let c1 = str.charCodeAt(i);
+        let c2 = i+1 < str.length ? str.charCodeAt(i+1) : 0;
+        let c3 = i+2 < str.length ? str.charCodeAt(i+2) : 0;
+
+        let e1 = c1 >> 2;
+        let e2 = ((c1 & 3) << 4) | (c2 >> 4);
+        let e3 = ((c2 & 15) << 2) | (c3 >> 6);
+        let e4 = c3 & 63;
+
+        if (i+1 >= str.length) e3 = e4 = 64;
+        else if (i+2 >= str.length) e4 = 64;
+
+        result += chars.charAt(e1) + chars.charAt(e2) +
+                  (e3 === 64 ? '=' : chars.charAt(e3)) +
+                  (e4 === 64 ? '=' : chars.charAt(e4));
     }
+    return result;
+}
+
+
+
+let BSW_SendPW = null
+
+
+
+console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+
+function post(body) {
+    system.run(async()=>{
+        if (!BSW_SendPW) {
+            console.error("Don't have SendPW")
+            console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+        }
+
+        try {
+            if (!body.type) return
+            const req = new net.HttpRequest(`http://localhost:3000/api/bds/send`)
+            req.setMethod("Post")
+            req.addHeader("authorization",BSW_SendPW)
+            req.addHeader('Content-Type', 'application/json')
+            req.setBody(JSON.stringify(body))
+            const res = await net.http.request(req)
+            if (res.status == 200) {
+                // 成功
+            } else {
+                console.error(`[Sending] - ${res.status}`)
+                world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました:${res.status}\n管理者に連絡してください..."}]}`)
+            }
+            if (res.status === 401) console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+        } catch(e) {
+            console.error(e.message)
+            world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました\n管理者に連絡してください..."}]}`)
+        }
+    })
 }
 
 
@@ -171,7 +207,6 @@ system.beforeEvents.startup.subscribe((ev)=>{
             if (json.type == "backuplist") {
                 const {source,data} = json
                 let text = "§aバックアップリスト(本日分)"
-                const date = new Date()
                 const today = []
                 for (const p of world.getAllPlayers()) {
                     if (p.name == source) {
@@ -209,6 +244,10 @@ system.beforeEvents.startup.subscribe((ev)=>{
 
                 }
                 post(returnjson)
+            } else if (json.type == "syncSendPW") {
+                const pass = json.data
+                BSW_SendPW = new SecretString(`Basic ${btoa(`BDS_Send:${pass}`)}`)
+                console.log(`Catch SendPW`)
             }
         })
       })

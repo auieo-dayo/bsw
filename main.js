@@ -11,6 +11,9 @@ const chalk = require('chalk');
 const crypto = require("crypto");
 const axios = require("axios");
 const discord = require("discord.js")
+const { v4: uuidv4 } = require('uuid');
+
+
 
 const config = require('./config/config');
 
@@ -231,9 +234,14 @@ app.use((req, res, next) => {
 // JSON
 app.use(express.json());
 
-// By BDS Basic
+// BDS Send Basic
+
+// Passwordの生成
+const BDSsendPass = uuidv4();
+
+
 app.use('/api/bds/', basicAuth({
-  users: { "BDS_Send" : "BDS_Send" },
+  users: { "BDS_Send" : `${BDSsendPass}` },
   challenge: false,           // 認証ダイアログを出す
   realm: 'BDS-Send-Path-Login'         // ダイアログに表示される領域名
 }));
@@ -288,7 +296,13 @@ app.post('/api/bds/send',async (req,res,next)=>{
       }
       case "syncplayerlist": {
         const data = body?.data
-        if (Array.isArray(data) && data.every(item => typeof item === "object" && item !== null)) {
+        if (Array.isArray(data) && data.every(item => 
+          typeof item === "object" &&
+          item !== null &&
+          typeof item.name === "string" &&
+          Array.isArray(item.tags) &&
+          item.tags.every(tag => typeof tag === "string")
+        )) {
           onlinePlayer = data
         }
         res.status(200).type("json").send({"status":true})
@@ -323,6 +337,16 @@ app.use('/', basicAuth({
   challenge: true,           // 認証ダイアログを出す
   realm: 'BSW-DashBoard-Login'         // ダイアログに表示される領域名
 }));
+
+app.get('/api/getbdspw', async (req, res, next) => {
+  try {
+    const json = {"password": BDSsendPass}
+    res.type("json").send(JSON.stringify(json,null,2))
+  }catch (err) {
+    next(err)
+  }
+  
+});
 
 app.get('/api/getlog', async (req, res, next) => {
   try {
@@ -999,6 +1023,8 @@ const bds = spawn(BDS_file,{
   stdio: ['pipe', 'pipe', 'pipe'],
   cwd: `${BDS_path}`
 });
+
+// 初回Backup
 let startedBackup = false;
 
 const waitBackup = setInterval(() => {
@@ -1032,6 +1058,10 @@ function sendCommand(cmd,hidden=false) {
   bds.stdin.write(`${cmd}\n`);
   
 }
+
+// アドオンにPWを伝える
+
+sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`)
 
 
 // BDS Output
@@ -1132,6 +1162,11 @@ rl.on('line', (line) => {
               console.error(`[NODE-ERR]${chalk.red(e.message)}`);
           }
         })()
+        return
+      }
+
+      if (json.type == "Request",json.cmd == "SendPwRequest") {
+        sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`)
         return
       }
     }
