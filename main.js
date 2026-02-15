@@ -18,6 +18,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('./config/config');
 
 const nowtime = require("./src/nowtime")
+const playerstore = require("./src/playerList")
 
 
 
@@ -75,7 +76,7 @@ const BackupInterval = config.backup.interval
 
 // BDS Online Players
 
-let onlinePlayer = []
+const onlinePlayer = new playerstore()
 
 // BDS Version
 
@@ -116,7 +117,7 @@ const logmng = {
       if (!json.type || !json.data || !json.time) return;
       pm.emit(json.type,json)
       const filepath = path.join(logPath.folder, logPath.file());
-      fs.appendFileSync(filepath, JSON.stringify(json)+"\n");
+      fs.appendFile(filepath, JSON.stringify(json)+"\n");
     } catch (err) {
       console.log(`LogMNG[Error]:${err.message}`)
     }
@@ -133,7 +134,7 @@ const PluginManager = require("./src/pluginManager")
 
 const apis = {
   snedChat(name,msg){apis.sendCommand(`/tellraw ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
-  getPlayerList(){return onlinePlayer ?? []},
+  getPlayerList(){return onlinePlayer.getAll() ?? []},
   getBackupList(getAllBackupList=false){
     const blist = get_backuplist("",getAllBackupList)
     return blist?.data ?? []   
@@ -293,7 +294,7 @@ app.post('/api/bds/send',async (req,res,next)=>{
           Array.isArray(item.tags) &&
           item.tags.every(tag => typeof tag === "string")
         )) {
-          onlinePlayer = data
+          onlinePlayer.fullSync(data)
         }
         res.status(200).type("json").send({"status":true})
         
@@ -357,7 +358,7 @@ app.get('/api/getlog', async (req, res, next) => {
 });
 
 app.get('/api/nowonline', (req, res) => {
-  res.type("json").send(JSON.stringify(onlinePlayer,null,2))
+  res.type("json").send(JSON.stringify(onlinePlayer.getAll(),null,2))
 });
 
 app.get('/api/info', async (req, res, next) => {
@@ -372,7 +373,7 @@ app.get('/api/info', async (req, res, next) => {
         "difficulty":`${process.env["difficulty"]}`,
         "player": {
           "max": Number(process.env["max-players"]),
-          "now": onlinePlayer.length
+          "now": onlinePlayer.getAll().length
         },
         "version": BDSver
       },
@@ -460,7 +461,7 @@ ws.on('message', (message) => {
       }
       if (msg.type == "servercmd") {
         if (msg.data == "playerlist") {
-          ws.send(JSON.stringify({"type":"server","datatype":"playerlist","data":onlinePlayer}))
+          ws.send(JSON.stringify({"type":"server","datatype":"playerlist","data":onlinePlayer.getAll()}))
         } else if (msg.data == "backup") {
           ws.send(JSON.stringify({"type":"server","datatype":"str","data":"BackupStarted"}))
           backup(true)
@@ -640,7 +641,7 @@ const chatmng = {
     logmng.add({"type":"chat","data":`[D]${name}:${message}`,"player":`${name}`,"message":`${message}`,"source":"Discord","time":Date.now()})
     WSbroadcast({ type: "chat", data: `[D]${name}:${message}`})
     const rawtext = {"rawtext":[{"text":`${returnText.replace(/\n/g,"\\n")}`}]}
-    if (onlinePlayer.length != 0) sendCommand(`tellraw @a ${JSON.stringify(rawtext)}`,true)
+    if (onlinePlayer.getAll().length != 0) sendCommand(`tellraw @a ${JSON.stringify(rawtext)}`,true)
 
   },
   "sendtoDis": async(name,message) => {
@@ -695,7 +696,7 @@ client.on(discord.Events.MessageCreate, message => {
     if (message.content == "?playerlist" || message.content == "?pl") {
       (async()=>{
         let list = "player...\n\n"
-        onlinePlayer.forEach((value)=>{
+        onlinePlayer.getAll().forEach((value)=>{
           list+=`- <${value.name}>\n`
         });
         const embed = new discord.EmbedBuilder()
@@ -782,9 +783,9 @@ async function backup(notskip = false, full = false) {
     const elapsed = Date.now() - beforeBackupTime;
     const intervalMs = config.backup.interval * 60 * 1000;
 
-    if (!notskip && (typeof onlinePlayer[0] == "undefined" && config.backup.pauseIfNoPlayer)) return;
+    if (!notskip && (typeof onlinePlayer.getAll()[0] == "undefined" && config.backup.pauseIfNoPlayer)) return;
     if (!notskip && elapsed < intervalMs) return
-    const realPlayers = onlinePlayer.filter(p => !config.backup.skipForPlayers.includes(p.name));
+    const realPlayers = onlinePlayer.getAll().filter(p => !config.backup.skipForPlayers.includes(p.name));
     if (!notskip && config.backup.pauseIfNoPlayer && realPlayers.length === 0) return;    
     const start = Date.now();
     beforeBackupTime = start
@@ -1072,7 +1073,7 @@ rl.on('line', (line) => {
         const json = {"name":playername,"tags":[""]}
         logmng.add({"type":"PlayerJoin","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerJoin","data":playername})
-        onlinePlayer.push(json)
+        onlinePlayer.join(PlayerStore)
         LLtoDis(json.name,"join")
         if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))
     }
@@ -1087,11 +1088,7 @@ rl.on('line', (line) => {
         logmng.add({"type":"PlayerLeave","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerLeave","data":playername})
 
-        onlinePlayer.forEach((value,index)=>{
-            if (value.name == json.name) {
-                onlinePlayer.splice(index,1)
-            }
-        })
+        onlinePlayer.leave(json)
         LLtoDis(json.name,"logout")
         backup(true)
         if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${playername}`))
