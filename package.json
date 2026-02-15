@@ -1,6 +1,6 @@
 {
   "name": "bedrock-server-wrapper",
-  "version": "4.9.9",
+  "version": "4.9.91",
   "main": "main.js",
   "scripts": {
     "start": "node main.js"
