@@ -22,28 +22,31 @@ const playerstore = require("./src/playerList")
 
 
 
-function initCouch(baseurl,dbname,User) {
-const couch = axios.create({
+function initCouch(baseurl, dbname, User) {
+  const couch = axios.create({
     baseURL: `${baseurl}/${dbname}`,
     auth: {
-      username: `${User.user.name}`,
-      password: `${User.user.pass}`
+      username: User.name,
+      password: User.pass
     }
-})
+  });
 
-couch.get("/_index").then((res)=>{
-let ptindexflag = false
-res.data.indexes.forEach((v)=>{if (v.name == "player_timestamp_index") ptindexflag = true})
-if (!ptindexflag) couch.post("/_index",{
-  "index": {
-    "fields": ["playername", "timestamp"]
-  },
-  "name": "player_timestamp_index"
-}).then(()=>{
-  return couch
-})
-})
+  couch.get("/_index").then((res) => {
+    const exists = res.data.indexes.some(v => v.name === "player_timestamp_index");
+
+    if (!exists) {
+      couch.post("/_index", {
+        index: {
+          fields: ["playername", "timestamp"]
+        },
+        name: "player_timestamp_index"
+      });
+    }
+  }).catch(console.error);
+
+  return couch;
 }
+
 
 
 // lastlocationlog
@@ -1073,7 +1076,7 @@ rl.on('line', (line) => {
         const json = {"name":playername,"tags":[""]}
         logmng.add({"type":"PlayerJoin","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerJoin","data":playername})
-        onlinePlayer.join(PlayerStore)
+        onlinePlayer.join(json)
         LLtoDis(json.name,"join")
         if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))
     }
