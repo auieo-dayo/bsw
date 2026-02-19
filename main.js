@@ -113,9 +113,6 @@ let servername = process.env["server-name"]
 
 
 
-// StartupText
-console.log(chalk.bgBlue(`BSW By auieo-dayo\nVersion:${require("./package.json").version}`))
-logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${require("./package.json").version}`,"time":Date.now()})
 
 
 // Plugin
@@ -132,8 +129,8 @@ const apis = {
   sendCommand(cmd,ishidden=false){sendCommand(cmd,ishidden)}
 }
 
+
 const pm = new PluginManager(apis)
-pm.loadPlugins()
 
 // logMNG
 const logmng = {
@@ -148,8 +145,12 @@ const logmng = {
     }
   }
 }
+// StartupText
+console.log(chalk.bgBlue(`BSW By auieo-dayo\nVersion:${require("./package.json").version}`))
+logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${require("./package.json").version}`,"time":Date.now()})
 
-
+// PlaginLoad
+pm.loadPlugins()
 
 
 
