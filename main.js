@@ -120,7 +120,7 @@ let servername = process.env["server-name"]
 const PluginManager = require("./src/pluginManager")
 
 const apis = {
-  sendChat(name,msg){apis.sendCommand(`tellraw ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
+  sendChat(name,msg){apis.sendCommand(`tellraw @a ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
   getPlayerList(){return onlinePlayer.getAll() ?? []},
   getBackupList(getAllBackupList=false){
     const blist = get_backuplist("",getAllBackupList)
