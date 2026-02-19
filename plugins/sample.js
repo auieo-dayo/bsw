@@ -13,7 +13,7 @@ module.exports = {
         const player = json.data
         // {"type":"PlayerJoin","data":"BotPlayer","time":1770277841000}
         console.log(player + " joined");
-        api.snedChat("samplePlugin",`Hello [${player}]!`)
+        api.snedChat(`Hello [${player}]!`)
         // [{"name":"","xuid":NaN},...]
         api.getPlayerList()
         api.sendCommand("execute as @a at @s run summon chicken ~~~")
