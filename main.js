@@ -123,7 +123,7 @@ logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${r
 const PluginManager = require("./src/pluginManager")
 
 const apis = {
-  snedChat(name,msg){apis.sendCommand(`/tellraw ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
+  sendChat(name,msg){apis.sendCommand(`/tellraw ${JSON.stringify({"rawtext":[{"text":`${name}:${msg}`}]})}`,true)},
   getPlayerList(){return onlinePlayer.getAll() ?? []},
   getBackupList(getAllBackupList=false){
     const blist = get_backuplist("",getAllBackupList)
