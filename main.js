@@ -90,8 +90,8 @@ let BDSver = NaN
 const BDS_path = path.join(root,"bds")
 const BDS_file =
   process.platform === "win32"
-    ? path.join(BDS_dir, "bedrock_server.exe")
-    : path.join(BDS_dir, "bedrock_server")
+    ? path.join(BDS_path, "bedrock_server.exe")
+    : path.join(BDS_path, "bedrock_server")
 
 
 // Log path
