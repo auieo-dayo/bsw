@@ -631,6 +631,9 @@ async function DeathinfotoDis(playername,messageid) {
       embed.setDescription(text)
       embed.setColor(0x1fd15e)
   }
+  } else {
+    embed.setDescription("# configのdeathLocationLogの設定をしてください")
+    embed.setColor(0xed0000)
   }
   
   
@@ -715,7 +718,7 @@ client.on(discord.Events.MessageCreate, message => {
             `\`${name}\`**${cmd.prefix.join(" | ")}**\n${cmd.description}`
           )
           .join("\n\n")
-      message.reply(`# Helps\n${md}` ?? "error")
+      return message.reply(`# Helps\n${md}` ?? "error")
     }
     if (message.content == "?playerlist" || message.content == "?pl") {
       (async()=>{
