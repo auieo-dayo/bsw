@@ -113,23 +113,10 @@ let servername = process.env["server-name"]
 
 
 
-// logMNG
-const logmng = {
-  "add": (json = {type:"",data:"",datatype:"",time:NaN}) => {
-    try {
-      if (!json.type || !json.data || !json.time) return;
-      pm.emit(json.type,json)
-      const filepath = path.join(logPath.folder, logPath.file());
-      fs.appendFile(filepath, JSON.stringify(json)+"\n");
-    } catch (err) {
-      console.log(`LogMNG[Error]:${err.message}`)
-    }
-  }
-}
-
 // StartupText
 console.log(chalk.bgBlue(`BSW By auieo-dayo\nVersion:${require("./package.json").version}`))
 logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${require("./package.json").version}`,"time":Date.now()})
+
 
 // Plugin
 
@@ -147,6 +134,23 @@ const apis = {
 
 const pm = new PluginManager(apis)
 pm.loadPlugins()
+
+// logMNG
+const logmng = {
+  "add": (json = {type:"",data:"",datatype:"",time:NaN}) => {
+    try {
+      if (!json.type || !json.data || !json.time) return;
+      pm.emit(json.type,json)
+      const filepath = path.join(logPath.folder, logPath.file());
+      fs.appendFile(filepath, JSON.stringify(json)+"\n");
+    } catch (err) {
+      console.log(`LogMNG[Error]:${err.message}`)
+    }
+  }
+}
+
+
+
 
 
 // BDS properties Path
