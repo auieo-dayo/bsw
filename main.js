@@ -88,7 +88,10 @@ let BDSver = NaN
 // BDS Paths
 
 const BDS_path = path.join(root,"bds")
-const BDS_file = path.join(BDS_path,"bedrock_server")
+const BDS_file =
+  process.platform === "win32"
+    ? path.join(BDS_dir, "bedrock_server.exe")
+    : path.join(BDS_dir, "bedrock_server")
 
 
 // Log path
@@ -152,7 +155,7 @@ logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${r
 // BDS Check
 if (!fs.pathExistsSync(BDS_file)) {
   console.error(chalk.bgRed("BDSの存在を確認できませんでした。"))
-  process.exit()
+  process.exit(1)
 }
 
 
