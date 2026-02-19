@@ -149,6 +149,13 @@ const logmng = {
 console.log(chalk.bgBlue(`BSW By auieo-dayo\nVersion:${require("./package.json").version}`))
 logmng.add({"type":"server","datatype":"str","data":`BSW by auieo-dayo | Ver:${require("./package.json").version}`,"time":Date.now()})
 
+// BDS Check
+if (!fs.pathExistsSync(BDS_file)) {
+  console.error(chalk.bgRed("BDSの存在を確認できませんでした。"))
+  process.exit()
+}
+
+
 // PlaginLoad
 pm.loadPlugins()
 
