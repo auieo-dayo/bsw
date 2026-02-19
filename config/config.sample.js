@@ -21,7 +21,7 @@ const config = {
         "TOKEN":"",
         // ディスコードを有効化するか
         "enabled":false,
-        // ディスコードにBDSの情報を送信するか
+        // ディスコードにBSWの情報を送信するか
         "notifications": {
             "chat": {
                 // チャットを送受信するか
@@ -37,21 +37,25 @@ const config = {
                 // 通知するチャンネルID
                 "channelId": ""
             },
-            "playerInfoToAdmin": {
-                // 管理者用チャンネルからプレイヤーの簡単な情報を取得できるようにするか
-                "enabled": true,
+            "toAdmin": {
                 // 管理者用チャンネルID
                 "channelId": "",
-                // プレフィックスの設定 (デフォルトだと?p Playerか?playerinfo Playerで取得)
-                "prefix": ["?p","?playerinfo"]
-            },
-            "deathInfoToAdmin": {
-                // 管理者用チャンネルからプレイヤーの簡単な情報を取得できるようにするか
+                // 有効化
                 "enabled": true,
-                // 管理者用チャンネルID
-                "channelId": "1456623336925958360",
-                // プレフィックスの設定 (デフォルトだと?d Playerか?deathinfo Playerで取得)
-                "prefix": ["?d","?deathinfo"]
+                
+                "deathInfo": {
+                    // 管理者用チャンネルからプレイヤーの死亡情報を取得できるようにするか
+                    "enabled":true,
+                    // プレフィックスの設定 (デフォルトだと?d Playerか?deathinfo Playerで取得)
+                    "prefix": ["?d","?deathinfo"]
+                },
+                "playerInfo": {
+                    // 管理者用チャンネルからプレイヤーの簡単な情報を取得できるようにするか
+                    "enabled":true,
+                    // プレフィックスの設定 (デフォルトだと?p Playerか?playerinfo Playerで取得)
+                    "prefix": ["?p","?playerinfo"]
+                }
+
             }
         },
     },

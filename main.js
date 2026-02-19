@@ -242,6 +242,10 @@ app.use('/api/bds/', basicAuth({
 app.post('/api/bds/send',async (req,res,next)=>{
   try {
     const body = req.body
+    if (typeof body.type != "string") {
+      return res.status(400).type("json").send({"status":false})
+    }
+
     switch(body.type) {
       case "chat":{
         const {msg,sender} = body
@@ -518,15 +522,13 @@ try {
  * @type {{
  *   chat: import("discord.js").TextChannel,
  *   serverStatus: import("discord.js").TextChannel
- *   playerinfo: import("discord.js").TextChannel
- *   deathinfo: import("discord.js").TextChannel
+ *   admin: import("discord.js").TextChannel
  * }}
  */
 const channels = {
   "chat": null,
   "serverStatus": null,
-  "playerinfo": null,
-  "deathinfo": null
+  "admin": null
 }
 
 async function LLtoDis(name,type) {
@@ -565,8 +567,8 @@ async function DeathtoDis(name,data) {
 
 async function PlayerinfotoDis(json) {
   if (!client.isReady()) return
-  if (!channels.playerinfo) return
-  if (!config.Discord.notifications.playerInfoToAdmin.enabled) return
+  if (!channels.admin) return
+  if (!config.Discord.notifications.toAdmin.playerInfo.enabled) return
 
   const {playername,iserr,messageid,data} = json
 
@@ -599,14 +601,14 @@ async function PlayerinfotoDis(json) {
     embed.setColor(0xabd656)
   }
 
-  const message = await channels.playerinfo.messages.fetch(messageid)
+  const message = await channels.admin.messages.fetch(messageid)
   await message.reply({ embeds: [embed] });
 }
 
 async function DeathinfotoDis(playername,messageid) {
   if (!client.isReady()) return
-  if (!channels.deathinfo) return
-  if (!config.Discord.notifications.deathInfoToAdmin.enabled) return
+  if (!channels.admin) return
+  if (!config.Discord.notifications.toAdmin.deathInfo.enabled) return
   if (!messageid) return
 
   const embed = new discord.EmbedBuilder()
@@ -633,7 +635,7 @@ async function DeathinfotoDis(playername,messageid) {
   
   
 
-  const message = await channels.playerinfo.messages.fetch(messageid)
+  const message = await channels.admin.messages.fetch(messageid)
   await message.reply({ embeds: [embed] });
 }
 
@@ -669,13 +671,10 @@ client.once(discord.Events.ClientReady, async () => {
           channels.chat = await client.channels.fetch(`${config.Discord.notifications.chat.channelId}`,{force: true,allowUnknownGuild: true});
         }
 
-        if (config.Discord.notifications.playerInfoToAdmin.enabled) {
-          channels.playerinfo = await client.channels.fetch(`${config.Discord.notifications.playerInfoToAdmin.channelId}`,{force: true,allowUnknownGuild: true});
+        if (config.Discord.notifications.toAdmin.enabled) {
+          channels.admin = await client.channels.fetch(`${config.Discord.notifications.toAdmin.channelId}`,{force: true,allowUnknownGuild: true});
         }
 
-        if (config.Discord.notifications.deathInfoToAdmin.enabled) {
-          channels.deathinfo = await client.channels.fetch(`${config.Discord.notifications.deathInfoToAdmin.channelId}`,{force: true,allowUnknownGuild: true});
-        }
 
 
         if (config.Discord.notifications.serverStatus.enabled) {
@@ -696,6 +695,28 @@ client.once(discord.Events.ClientReady, async () => {
 client.on(discord.Events.MessageCreate, message => {
   if (message.channelId == config.Discord.notifications.chat.channelId) {
     if (message.author.bot) return;
+    // helpなら
+    if (message.content == "?help") {
+      const commands = {
+        "help": {
+          "enabled": true,
+          "prefix": ["?help"],
+          "description": "このヘルプを表示します。"
+        },
+        "playerinfo": {
+          "enabled": true,
+          "prefix": ["?pl","?playerlist"],
+          "description": "プレイヤーリストを表示します。"          
+        }
+      }
+      const md = Object.entries(commands)
+          .filter(([_, cmd]) => cmd.enabled)
+          .map(([name, cmd]) =>
+            `\`${name}\`**${cmd.prefix.join(" | ")}**\n${cmd.description}`
+          )
+          .join("\n\n")
+      message.reply(`# Helps\n${md}` ?? "error")
+    }
     if (message.content == "?playerlist" || message.content == "?pl") {
       (async()=>{
         let list = "player...\n\n"
@@ -714,10 +735,38 @@ client.on(discord.Events.MessageCreate, message => {
     // チャットを送信
     chatmng.sendtoMC(message.author.displayName,message.content)
 
-    } else if (message.channelId == config.Discord.notifications.playerInfoToAdmin.channelId) {
+    // 管理者用ディスコチャンネルなら
+    } else if (message.channelId == config.Discord.notifications.toAdmin.channelId && config.Discord.notifications.toAdmin.enabled) {
+      // helpなら
+      if (message.content == "?help") {
+        const commands = {
+          "help": {
+            "enabled": true,
+            "prefix": ["?help"],
+            "description": "このヘルプを表示します。"
+          },
+          "playerinfo": {
+            "enabled": config.Discord.notifications.toAdmin.playerInfo.enabled,
+            "prefix": config.Discord.notifications.toAdmin.playerInfo.prefix,
+            "description": "簡単なプレイヤーの情報を取得します。(CouchDB推奨)"          
+          },
+          "deathinfo": {
+            "enabled": config.Discord.notifications.toAdmin.deathInfo.enabled,
+            "prefix": config.Discord.notifications.toAdmin.deathInfo.prefix,
+            "description": "最新十件で死亡場所等を取得します(CouchDB必須)"
+          }
+        }
+       const md = Object.entries(commands)
+            .filter(([_, cmd]) => cmd.enabled)
+            .map(([name, cmd]) =>
+              `\`${name}\`**${cmd.prefix.join(" | ")}**\n${cmd.description}`
+            )
+            .join("\n\n")
+        message.reply(`# Helps\n${md}` ?? "error")
+      }
       // playerinfo プレフィックスで始まっていたら
-      if (config.Discord.notifications.playerInfoToAdmin.enabled && config.Discord.notifications.playerInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
-        const prefix = config.Discord.notifications.playerInfoToAdmin.prefix.find(pre =>
+      if (config.Discord.notifications.toAdmin.playerInfo.enabled && config.Discord.notifications.toAdmin.playerInfo.prefix.some(pre => message.content.startsWith(pre))) {
+        const prefix = config.Discord.notifications.toAdmin.playerInfo.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )
         if (prefix) {
@@ -728,8 +777,8 @@ client.on(discord.Events.MessageCreate, message => {
      } 
 
       // deathinfo プレフィックスで始まっていたら
-      if (config.Discord.notifications.deathInfoToAdmin.enabled && config.Discord.notifications.deathInfoToAdmin.prefix.some(pre => message.content.startsWith(pre))) {
-        const prefix = config.Discord.notifications.deathInfoToAdmin.prefix.find(pre =>
+      if (config.Discord.notifications.toAdmin.deathInfo.enabled && config.Discord.notifications.toAdmin.deathInfo.prefix.some(pre => message.content.startsWith(pre))) {
+        const prefix = config.Discord.notifications.toAdmin.deathInfo.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )
       if (prefix){ 
