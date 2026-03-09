@@ -5,8 +5,7 @@ const path = require("path")
 const WebSocket = require('ws');
 const dotenv = require("dotenv");
 dotenv.config();
-const {propertiesReader} = require('properties-reader');
-
+const PropertiesReader = require('properties-reader');
 const fs = require("fs-extra")
 const chalk = require('chalk');
 const crypto = require("crypto");
@@ -161,39 +160,35 @@ if (!fs.pathExistsSync(BDS_file)) {
 
 
 // PlaginLoad
-pm.loadPlugins();
+pm.loadPlugins()
 
 
 
 // BDS properties Path
 
-(async()=>{
-  const properties_path = path.join(BDS_path,"server.properties")
-  const properties = propertiesReader({
-    "sourceFile":properties_path
-  });
+const properties_path = path.join(BDS_path,"server.properties")
+const properties = PropertiesReader(properties_path);
 
-  // BDS properties edit
+// BDS properties edit
 
-  const env_list = [
-  "server-name",
-  "gamemode",
-  "difficulty",
-  "allow-cheats",
-  "max-players",
-  "server-port",
-  "server-portv6",
-  "level-seed",
-  "level-name"
-  ]
+const env_list = [
+"server-name",
+"gamemode",
+"difficulty",
+"allow-cheats",
+"max-players",
+"server-port",
+"server-portv6",
+"level-seed",
+"level-name"
+]
 
-  for (const item of env_list) {
-    if (typeof process.env[item] == "undefined") continue;
-    properties.set(item,process.env[item])
-  }
-  properties.set("content-log-console-output-enabled","true")
-  await properties.save(properties_path);
-})()
+for (const item of env_list) {
+if (typeof process.env[item] == "undefined") continue;
+properties.set(item,process.env[item])
+}
+properties.set("content-log-console-output-enabled","true")
+properties.save(properties_path);
 
 
 // default_server_addon module config
