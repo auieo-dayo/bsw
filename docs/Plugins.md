@@ -33,8 +33,8 @@ module.exports = {
 
 プラグインが受け取る `api` は読み取り専用（freeze）で渡されます。主なメソッド:
 
-- `api.snedChat(name, msg)`
-  - Discord などへサンプル通知を送るユーティリティ（コード上の名前は `snedChat` のままです）
+- `api.sendChat(name, msg)`
+  - Discord などへサンプル通知を送るユーティリティ（コード上の名前は `sendChat` のままです）
 - `api.getPlayerList()`
   - 現在オンラインのプレイヤー情報配列を返します
 - `api.getBackupList(getAllBackupList=false)`
@@ -52,4 +52,4 @@ module.exports = {
 
 ## 例: `plugins/sample.js` の簡易説明
 
-- 読み込み時に起動メッセージを表示し、`PlayerJoin` イベントで挨拶メッセージを `api.snedChat` で送信します。
+- 読み込み時に起動メッセージを表示し、`PlayerJoin` イベントで挨拶メッセージを `api.sendChat` で送信します。

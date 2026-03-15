@@ -1158,7 +1158,7 @@ rl.on('line', (line) => {
         logmng.add({"type":"PlayerLeave","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerLeave","data":playername})
 
-        onlinePlayer.leave(json)
+        onlinePlayer.leave(json.name)
         LLtoDis(json.name,"logout")
         backup(true)
         if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${playername}`))
@@ -1222,7 +1222,7 @@ rl.on('line', (line) => {
         return
       }
 
-      if (json.type == "Request",json.cmd == "SendPwRequest") {
+      if (json.type == "Request" && json.cmd == "SendPwRequest") {
         sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`)
         return
       }
