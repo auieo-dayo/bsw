@@ -1,3 +1,7 @@
+/* eslint-disable no-unused-vars */
+ 
+
+
 // Bedrock Server Wrapper  - Default-Server-Addon
 import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause, EntityComponent, EquipmentSlot, InputButton, GameMode, ItemType, ItemTypes, ItemComponentTypes } from"@minecraft/server";
 import * as ui from "@minecraft/server-ui";

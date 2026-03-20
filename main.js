@@ -430,7 +430,7 @@ app.get('/api/backuplist', async(req, res, next) => {
 
 app.use(express.static(path.join(root,"www")))
 
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error(chalk.red('[WEB-ERROR]'), err);
   res.status(500).json({
     error: 'internal_error',
@@ -529,6 +529,7 @@ try {
     await channel.send(text.slice(i, i + limit));
   }
 }catch(e){
+  console.log(`[SLM-Error]${e.message}`)
 }
 }
 
@@ -733,7 +734,7 @@ client.on(discord.Events.MessageCreate, message => {
             `\`${name}\`**${cmd.prefix.join(" | ")}**\n${cmd.description}`
           )
           .join("\n\n")
-      return message.reply(`# Helps\n${md}` ?? "error")
+      return message.reply(`# Helps\n${md}`)
     }
     if (message.content == "?playerlist" || message.content == "?pl") {
       (async()=>{
@@ -780,7 +781,7 @@ client.on(discord.Events.MessageCreate, message => {
               `\`${name}\`**${cmd.prefix.join(" | ")}**\n${cmd.description}`
             )
             .join("\n\n")
-        message.reply(`# Helps\n${md}` ?? "error")
+        message.reply(`# Helps\n${md}`)
       }
       // playerinfo プレフィックスで始まっていたら
       if (config.Discord.notifications.toAdmin.playerInfo.enabled && config.Discord.notifications.toAdmin.playerInfo.prefix.some(pre => message.content.startsWith(pre))) {
@@ -789,7 +790,7 @@ client.on(discord.Events.MessageCreate, message => {
         )
         if (prefix) {
           const content = message.content.slice(prefix.length+1)
-          const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","\'").replaceAll("\\","\\\\'")
+          const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","'").replaceAll("\\","\\\\'")
           sendCommand(`send "${json}"`)
         }
      } 
@@ -976,7 +977,9 @@ async function get_backuplist(source,returnfullbackup=false) {
       const p = path.join(target, item);
       try {
         if ((await fs.stat(p)).isDirectory()) dirs.push(item);
-      } catch {}
+      } catch(e) {
+        console.error(`[GetBackups] ${e.message}`)
+      }
     }
     return dirs;
   };
@@ -1122,7 +1125,7 @@ function sendCommand(cmd,hidden=false) {
 
 // アドオンにPWを伝える
 
-sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`)
+sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
 
 
 // BDS Output
@@ -1139,7 +1142,7 @@ rl.on('line', (line) => {
 
     if (/^\[.* INFO\] Player Spawned: .* xuid: .*, pfid:.*$/.test(line)) {
         const playername = String(line.replace(/^\[.* INFO\] Player Spawned: /,"").replace(/ xuid:.*$/,""))
-        const xuid = Number(line.replace(/^\[.* INFO\] Player Spawned: .* xuid: /,"").replace(/, pfid: .*$/,""))
+        // const xuid = Number(line.replace(/^\[.* INFO\] Player Spawned: .* xuid: /,"").replace(/, pfid: .*$/,""))
         const json = {"name":playername,"tags":[""]}
         logmng.add({"type":"PlayerJoin","data":playername,"time":Date.now()})
         WSbroadcast({"type":"PlayerJoin","data":playername})
@@ -1152,7 +1155,7 @@ rl.on('line', (line) => {
 
     if (/^\[.* INFO\] Player disconnected: .*, xuid: .*, pfid:.*$/.test(line)) {
         const playername = String(line.replace(/^\[.* INFO\] Player disconnected: /,"").replace(/, xuid: .*, pfid: .*$/,""))
-        const xuid = Number(line.replace(/^\[.* INFO\] Player disconnected: .*, xuid: /,"").replace(/, pfid: .*$/,""))
+        // const xuid = Number(line.replace(/^\[.* INFO\] Player disconnected: .*, xuid: /,"").replace(/, pfid: .*$/,""))
         const json = {"name":playername,"tags":[""]}
 
         logmng.add({"type":"PlayerLeave","data":playername,"time":Date.now()})
@@ -1198,12 +1201,12 @@ rl.on('line', (line) => {
         (async()=>{
           const json = await get_backuplist(source)
           if (!isEntity) return
-          sendCommand(`send "${JSON.stringify(json).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`,true)
+          sendCommand(`send "${JSON.stringify(json).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`,true)
         })()
       }
 
       if (json.type == "Logger" && json.cmd == "playerLeave") {
-        const {source,isEntity} = json;
+        const {source} = json;
         if (!config.lastLocationLog.saveLocationLog) return
         (async()=>{
           try {
@@ -1223,7 +1226,7 @@ rl.on('line', (line) => {
       }
 
       if (json.type == "Request" && json.cmd == "SendPwRequest") {
-        sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","\'").replaceAll("\\","\\\\'")}"`)
+        sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
         return
       }
     }

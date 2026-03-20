@@ -1,4 +1,6 @@
-  let bdsver = ""
+/* eslint-disable no-unused-vars */
+
+let bdsver = ""
 // Backup
 
 

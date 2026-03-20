@@ -57,7 +57,7 @@ async function init() {
       console.error(e);
     }
   }
-  document.getElementById("submit").addEventListener("click",(ev)=>{
+  document.getElementById("submit").addEventListener("click",()=>{
     const cmd = document.getElementById("cmdinput")
     if (!cmd) return
     ws.send(JSON.stringify({"type":"cmd","data":cmd.value}))
