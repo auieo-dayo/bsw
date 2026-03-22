@@ -4,52 +4,139 @@
 
 ## 基本構成
 
-- 各プラグインは CommonJS モジュールとして `module.exports = { ... }` をエクスポートします。
-- 必要となるプロパティ例:
-  - `enable`: true/false（false の場合ロードされません）
-  - `name`: プラグイン名（任意）
-  - `onLoad(api)`: プラグイン読み込み時に呼ばれる初期化関数
-  - イベントハンドラ: `PlayerJoin`, `chat` など、ログの `type` 名に対応する関数を定義できます
+各プラグインは CommonJS モジュールとして `module.exports` をエクスポートします。
+
+### 必須プロパティ
+
+- `enable`: boolean（`true` のみロードされます）
+- `name`: string（プラグイン名）
+- `onLoad(api)`: function（読み込み時に一度だけ呼ばれる初期化関数）
+
+### イベントハンドラ
+
+ログファイルの `type` フィールド値に対応するメソッドを定義することで、イベントを受け取れます。
+各ハンドラはログ JSON 全体を引数に受け取ります。
+
+**主なイベント例**: `PlayerJoin`, `PlayerLeave`, `chat`, `death`, `server` など
 
 ## エントリポイント例
 
 ```javascript
 module.exports = {
   enable: true,
-  name: "sample",
+  name: "sample-plugin",
   onLoad(api) {
-    // 初期化処理。api は読み取り専用です。
+    // 初期化処理
+    console.log("Plugin loaded!");
   },
+  
   PlayerJoin(json) {
-    // ログイベント受信例
+    // PlayerJoin イベント処理
   },
+  
   chat(json) {
-    // チャットログ受信例
+    // chat イベント処理
   }
-}
+};
 ```
 
 ## 利用可能な API
 
-プラグインが受け取る `api` は読み取り専用（freeze）で渡されます。主なメソッド:
+プラグインが受け取る `api` は読み取り専用（Object.freeze）で渡されます。
 
-- `api.sendChat(name, msg)`
-  - Discord などへサンプル通知を送るユーティリティ（コード上の名前は `sendChat` のままです）
-- `api.getPlayerList()`
-  - 現在オンラインのプレイヤー情報配列を返します
-- `api.getBackupList(getAllBackupList=false)`
-  - バックアップ一覧を取得します。引数に `true` を渡すと全期間を取得する実装です
-- `api.sendCommand(cmd, isHidden=false)`
-  - サーバーにコマンドを送信します
+### チャット送信: `api.sendChat`
 
-（注）将来 API 名が変更される可能性があります。プラグイン実装時はリポジトリ内の `src/pluginManager.js` と `plugins/sample.js` を参照してください。
+チャットメッセージを送信するオブジェクト。以下の 3 つのメソッドを持ちます:
 
-## イベントハンドリング
+#### `api.sendChat.mc(msg)`
+Minecraft サーバー内のみに `tellraw` でメッセージを送信します。
 
-- ログファイルに書き込まれる `type` フィールド名をそのままイベント名として受け取れます。
-  例: `PlayerJoin`, `PlayerLeave`, `chat`, `death`, `BDS`, `server` など。
-- 各ハンドラはログ JSON 全体を引数に受け取ります。
+```javascript
+api.sendChat.mc("Hello from plugin!");
+```
 
-## 例: `plugins/sample.js` の簡易説明
+#### `api.sendChat.discord(msg)` ※非同期
+Discord チャンネルのみにメッセージを送信します。設定で無効化されている場合は何もしません。
 
-- 読み込み時に起動メッセージを表示し、`PlayerJoin` イベントで挨拶メッセージを `api.sendChat` で送信します。
+```javascript
+await api.sendChat.discord("Hello from Discord!");
+```
+
+#### `api.sendChat.send(msg)` ※非同期
+Minecraft と Discord 両方にメッセージを送信します。
+
+```javascript
+await api.sendChat.send("Hello to everywhere!");
+```
+
+### プレイヤー情報: `api.getPlayerList()`
+
+現在オンラインのプレイヤー情報配列を取得します。
+プレイヤーオブジェクトには `name` と `tags` が含まれます。
+
+```javascript
+const players = api.getPlayerList();
+// [{"name":"Player1","tags":["tag1",...]}, ...]
+players.forEach(p => console.log(p.name));
+```
+
+### バックアップ: `api.getBackupList(getAllBackupList=false)`
+
+バックアップ一覧を取得します。
+
+- `false`（デフォルト）: 本日のバックアップのみ返す
+- `true`: 全期間のバックアップを返す
+
+```javascript
+const todayBackups = api.getBackupList(false);
+const allBackups = api.getBackupList(true);
+// { allbackup, today, todaybackuplist, fullbackuplist (全取得時) }
+```
+
+### コマンド実行: `api.sendCommand(cmd, isHidden=false)`
+
+Bedrock Server にコマンドを送信します。
+
+- `cmd`: string（実行するコマンド）
+- `isHidden`: boolean（true の場合、ログに表示されません）
+
+```javascript
+api.sendCommand(`execute as "${playerName}" at @s run summon chicken ~~~`);
+api.sendCommand(`say Hello!`, false);
+```
+
+## 実装例
+
+詳細は `plugins/sample.js` を参照してください。以下は基本的な使用例です:
+
+```javascript
+const chalk = require("chalk");
+let api;
+
+module.exports = {
+  enable: true,
+  name: "example",
+  
+  onLoad(_api) {
+    api = _api;
+    console.log(chalk.bgBlue("Example plugin loaded!"));
+  },
+  
+  PlayerJoin(json) {
+    const player = json.data;
+    api.sendChat.mc(`Welcome [${player}]!`);
+    api.sendCommand(`execute as "${player}" at @s run particle minecraft:heart_particle ~~~`);
+  },
+  
+  chat(json) {
+    const { player, message, source } = json;
+    console.log(`[${source}] ${player}: ${message}`);
+  }
+};
+```
+
+## 注意事項
+
+- API は `onLoad` と各イベントハンドラ内でのみ利用可能です。
+- `api.sendChat.discord()` と `api.sendChat.send()` は非同期操作です。必要に応じて `await` を使用してください。
+- プラグインの実装時は `src/pluginManager.js` と `plugins/sample.js` を参照してください。

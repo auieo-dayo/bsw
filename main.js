@@ -122,14 +122,25 @@ let servername = process.env["server-name"]
 
 const PluginManager = require("./src/pluginManager")
 
+const rawSendCommand = sendCommand
 const apis = {
-  sendChat(msg){apis.sendCommand(`tellraw @a ${JSON.stringify({"rawtext":[{"text":`${msg}`}]})}`,true)},
+  sendChat : {
+    mc: (msg)=>{apis.sendCommand(`tellraw @a ${JSON.stringify({"rawtext":[{"text":msg}]})}`,true)},
+    discord: async (msg)=>{
+      if (!config.Discord.notifications.chat.enabled) return
+      await sendLongMessage(channels.chat,msg)
+    },
+    send: async (msg)=>{
+      apthiis.sendChat.mc(msg)
+      await apis.sendChat.discord(msg)
+    }
+  },
   getPlayerList(){return onlinePlayer.getAll() ?? []},
   getBackupList(getAllBackupList=false){
     const blist = get_backuplist("",getAllBackupList)
     return blist?.data ?? []   
   },
-  sendCommand(cmd,ishidden=false){sendCommand(cmd,ishidden)}
+  sendCommand(cmd,ishidden=false){rawSendCommand(cmd,ishidden)}
 }
 
 

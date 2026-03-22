@@ -13,10 +13,16 @@ module.exports = {
         const player = json.data
         // {"type":"PlayerJoin","data":"BotPlayer","time":1770277841000}
         console.log(player + " joined");
-        api.sendChat(`Hello [${player}]!`)
-        // [{"name":"","xuid":NaN},...]
+        // マイクラ側のみにチャットを送る
+        api.sendChat.mc(`Hello [${player}]!`)
+        // ディスコード側のみにチャットを送る
+        api.sendChat.discord(`Hello [${player}]!`)
+        // 両方に送信。
+        api.sendChat.send(`Player joined.`)
+        // [{"name":"","tags":["",...]},...](tagsは場合によってはない場合もあり)
         api.getPlayerList()
-        api.sendCommand("execute as @a at @s run summon chicken ~~~")
+        // コマンドを送信
+        api.sendCommand(`execute as "${player}" at @s run summon chicken ~~~`)
 
     
         // {
