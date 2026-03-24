@@ -48,24 +48,17 @@ function initCouch(baseurl, dbname, User) {
 }
 
 
-
+/**
+ * @type {{lll:import('axios').AxiosInstance | null,dll:import('axios').AxiosInstance | null}}
+ */
+const Couch = {
+  lll: null,
+  dll: null
+}
 // lastlocationlog
-/**
- * @type {import('axios').AxiosInstance | undefined}
- */
-let lllCouch
-if (config.lastLocationLog.saveLocationLog) {
-  lllCouch = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user) 
-}
-
+if (config.lastLocationLog.saveLocationLog) Couch.lll = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
 // deathlocationlog
-/**
- * @type {import('axios').AxiosInstance | undefined}
- */
-let dllCouch
-if (config.deathLocationLog.saveDeathLocationLog) {
-  dllCouch = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user) 
-}
+if (config.deathLocationLog.saveDeathLocationLog) Couch.dll = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
 
 
 // project-root
@@ -131,7 +124,7 @@ const apis = {
       await sendLongMessage(channels.chat,msg)
     },
     send: async (msg)=>{
-      apthiis.sendChat.mc(msg)
+      apis.sendChat.mc(msg)
       await apis.sendChat.discord(msg)
     }
   },
@@ -260,6 +253,10 @@ app.use(express.json());
 const BDSsendPass = uuidv4();
 
 
+app.use('/api/bds/',(req,res,next)=>{
+  if (!["127.0.0.1","::1","::ffff:127.0.0.1"].includes(req.socket?.remoteAddress)) return res.sendStatus(404);
+  next()
+})
 app.use('/api/bds/', basicAuth({
   users: { "BDS_Send" : `${BDSsendPass}` },
   challenge: false,           // 認証ダイアログを出す
@@ -288,7 +285,7 @@ app.post('/api/bds/send',async (req,res,next)=>{
         if (config.deathLocationLog.saveDeathLocationLog) {
           try {
             const json = {playername:source,"data":`${source}(${reason})`,reason,location,"timestamp":Date.now(),worldname}
-            const res = await dllCouch.post("/",json)
+            const res = await Couch.dll.post("/",json)
             if (res.status < 200 || res.status >= 300) {
               const errtext = `(${res.status})${res.data}`
               console.error(`[NODE-ERR]${chalk.red(errtext)}`);
@@ -605,7 +602,7 @@ async function PlayerinfotoDis(json) {
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
     if (config.lastLocationLog.saveLocationLog) {
-      const res = await lllCouch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
+      const res = await Couch.lll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
       const logoutdata = res.data.docs[0]
       if (logoutdata) {
         const date = new Date(logoutdata.timestamp)
@@ -643,7 +640,7 @@ async function DeathinfotoDis(playername,messageid) {
 
   embed.setTitle(`[${playername}]の死亡情報`)
   if (config.deathLocationLog.saveDeathLocationLog) {
-    const res = await dllCouch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
+    const res = await Couch.dll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
     const deathdata = res.data.docs
     if (!deathdata[0]) {
       embed.setDescription(`[${playername}]の死亡情報が見つかりませんでした。`)
@@ -1224,7 +1221,7 @@ rl.on('line', (line) => {
             const playername = source.replace(/\(.* .* .*\)/,"")
             const [x, y, z] = source.replace(playername,"").replace("(","").replace(")","").split(" ").map(Number)
             const json = {playername,"location":{x,y,z},"timestamp":Date.now(),worldname}
-            const res = await lllCouch.post("/",json)
+            const res = await Couch.lll.post("/",json)
             if (res.status < 200 || res.status >= 300) {
               const errtext = `(${res.status})${res.data}`
               console.error(`[NODE-ERR]${chalk.red(errtext)}`);
