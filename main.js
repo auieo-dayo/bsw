@@ -163,7 +163,7 @@ if (!fs.pathExistsSync(BDS_file)) {
 }
 
 
-// PlaginLoad
+// PluginLoad
 pm.loadPlugins()
 
 
@@ -232,7 +232,7 @@ const { getCpuUsage } = require("./src/cpuusage");
 
 
 
-// CROS
+// CORS
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*'); // 全オリジン許可
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -1076,7 +1076,7 @@ try {
     if (search_flag) bp_packlist[search_index].version = manifest.header.version
     if (!search_flag) bp_packlist.push({"pack_id":addon_uuid,"version":manifest.header.version})
     await fs.writeFile(path.join(bp_packlist_path),JSON.stringify(bp_packlist,null,2))
-    if (config.console.bswSystemLogToConsole) (chalk.bgBlue("defaultAdd-on copy success"))
+    if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue("defaultAdd-on copy success"))
     logmng.add({"type":"server","datatype":"str","data":"defaultAdd-on copy success","time":Date.now()})
     
     WSbroadcast({"type":"server","datatype":"str","data":"defaultAdd-on copy success"})
