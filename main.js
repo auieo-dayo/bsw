@@ -438,12 +438,13 @@ app.get('/api/backuplist', async(req, res, next) => {
 
 app.use(express.static(path.join(root,"www")))
 
-app.use((err, req, res) => {
+app.use((err, req, res,next) => {
   console.error(chalk.red('[WEB-ERROR]'), err);
-  res.status(500).json({
-    error: 'internal_error',
-    message: err.message
-  });
+  if (res.headersSent) next(err);
+    res.status(500).json({
+      error: 'internal_error',
+      message: err.message
+    });
 });
 
 
