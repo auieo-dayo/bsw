@@ -440,7 +440,7 @@ app.use(express.static(path.join(root,"www")))
 
 app.use((err, req, res,next) => {
   console.error(chalk.red('[WEB-ERROR]'), err);
-  if (res.headersSent) next(err);
+  if (res.headersSent) return next(err);
     res.status(500).json({
       error: 'internal_error',
       message: err.message
