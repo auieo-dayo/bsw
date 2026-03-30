@@ -731,7 +731,7 @@ client.on(discord.Events.MessageCreate, message => {
           "prefix": ["?help"],
           "description": "このヘルプを表示します。"
         },
-        "playerinfo": {
+        "playerlist": {
           "enabled": true,
           "prefix": ["?pl","?playerlist"],
           "description": "プレイヤーリストを表示します。"          

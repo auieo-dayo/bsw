@@ -2,7 +2,7 @@ const chalk = require("chalk")
 
 let api
 module.exports = {
-    enable: true,
+    enable: false,
     name: "sample",
     onLoad(_api) {
         console.log(chalk.bgRed("サンプルプラグインが入っています！"));
