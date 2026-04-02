@@ -13,7 +13,9 @@ const axios = require("axios");
 const discord = require("discord.js")
 const { v4: uuidv4 } = require('uuid');
 
-
+const wslimit = require('./src/wslatelimit');
+const wstoken = require('./src/wstoken');
+const wst = new wstoken(60000)
 
 const config = require('./config/config');
 
@@ -226,6 +228,7 @@ const PORT = config.webUi.port;
 
 const os = require('os');
 const { getCpuUsage } = require("./src/cpuusage");
+const { default: rateLimit } = require('express-rate-limit');
 
 
 
@@ -352,12 +355,30 @@ app.post('/api/bds/send',async (req,res,next)=>{
 //   }
 // })
 
+// lateLimit
+const limit = rateLimit({
+  windowMs: 60 * 1000, // 1分
+  max: 100, // 最大100リクエスト
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/',limit)
+
 //  Basic
 app.use('/', basicAuth({
   users: { [config.webUi.username ?? "admin"] : config.webUi.password ?? "admin" },
   challenge: true,           // 認証ダイアログを出す
   realm: 'BSW-DashBoard-Login'         // ダイアログに表示される領域名
 }));
+
+app.get('/api/getwstoken',(req,res,next)=>{
+  try {
+    const token = wst.gettoken()
+    return res.type("json").send(JSON.stringify({token},null,2)) 
+  }catch(err) {
+    next(err)
+  }
+})
 
 app.get('/api/getbdspw', async (req, res, next) => {
   try {
@@ -454,25 +475,22 @@ const wss = new WebSocket.Server({ noServer: true, path: "/ws" });
 
 if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue(`WebSocket Ready`))
 
+const wsl = new wslimit(60000,10)
 server.on("upgrade", (req, socket, head) => {
-  const auth = req.headers["authorization"];
-  if (!auth) {
-    socket.destroy();
-    return;
+  if (!wsl.limit(req,socket)) return
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  const token = url.searchParams.get("token");
+  if (!token) {
+    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+    return socket.destroy();
   }
-
-  const [type, token] = auth.split(" ");
-  if (type !== "Basic") {
-    socket.destroy();
-    return;
-  }
-
-  const decoded = Buffer.from(token, "base64").toString();
-  const [user, pass] = decoded.split(":");
-
-  if (user !== config.webUi.username ||pass !== config.webUi.password) {
-    socket.destroy();
-    return;
+  
+  const res = wst.use(token)
+  if (!res.passed) {
+    socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+    return socket.destroy();
   }
 
   wss.handleUpgrade(req, socket, head, ws => {

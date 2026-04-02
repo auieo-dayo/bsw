@@ -164,7 +164,8 @@ if (location.search == "?debug") return
 
   // WebSocket
 const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-socket = new WebSocket(`${protocol}://${location.hostname}:${location.port}/ws`);
+const token = await (await fetch(`${location.origin}/api/getwstoken`)).json()
+socket = new WebSocket(`${protocol}://${location.hostname}:${location.port}/ws?token=${token.token}`);
 
 //      socket = new WebSocket(`ws://${location.hostname}:${location.port}/ws`)
   socket.addEventListener("open", () => {

@@ -45,12 +45,11 @@ async function init() {
     else appendLog(consoleBody, `[${l.type}] ${l.data}`, l.type);
   });
   // WebSocket
-  const ws = new WebSocket(url.replace("http", "ws") + "/ws");
+  const token = await (await fetch(`${url}/api/getwstoken`)).json()
+  const ws = new WebSocket(`${url}/ws?token=${token.token}`);
   ws.onmessage = (ev) => {
-    console.log(ev.data)
     try {
       const data = JSON.parse(ev.data);
-      console.log(data)
       if(data.type === "chat") appendLog(chatBody, data.data, "chat");
       else appendLog(consoleBody, `[${data.type}] ${data.data}`, data.type);
     } catch(e) {
