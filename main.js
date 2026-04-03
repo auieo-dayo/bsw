@@ -408,15 +408,9 @@ app.get('/api/getlog', async (req, res, next) => {
   
 });
 
-app.get('/api/nowonline', (req, res) => {
-  res.type("json").send(JSON.stringify(onlinePlayer.getAll(),null,2))
-});
-
-app.get('/api/info', async (req, res, next) => {
-  try {
-
+async function getinfo() {
     const cpu = await getCpuUsage(100)
-    const json = {
+    return {
       "BDS": {
         "servername":`${process.env["server-name"]}`,
         "levelname":`${process.env["level-name"]}`,
@@ -440,7 +434,28 @@ app.get('/api/info', async (req, res, next) => {
       
     }
     }
-    res.type("json").send(JSON.stringify(json,null,2))
+}
+
+//  TODO:ここらへんのAPIをまとめて/api/dashboard作る
+
+app.get('/api/dashboard',async(req,res,next)=>{
+  try {
+    const info = await getinfo()
+    const onlines = onlinePlayer.getAll()
+    const blist = await get_backuplist("",false)
+    res.type("json").send({info,onlines,backups:blist.data})
+  }catch(e){
+    next(e)
+  }
+})
+
+app.get('/api/nowonline', (req, res) => {
+  res.type("json").send(JSON.stringify(onlinePlayer.getAll(),null,2))
+});
+
+app.get('/api/info', async (req, res, next) => {
+  try {
+    res.type("json").send(JSON.stringify(await getinfo(),null,2))
 
   } catch(err) {
     next(err);

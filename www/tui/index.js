@@ -17,7 +17,9 @@ async function reloadAPI() {
   const backupBody = document.getElementById("backup-body")
   const statusBody = document.getElementById("status-body");
   // 初期 API
-  const info = await get("/api/info");
+  const data = await get("/api/dashboard")
+  
+  const info = data.info;
   statusBody.textContent = 
     `Server: ${info.BDS.servername}\nWorld: ${info.BDS.levelname}\nMode: ${info.BDS.gamemode}/${info.BDS.difficulty}\nPlayers: ${info.BDS.player.now}/${info.BDS.player.max}\nVersion: ${info.BDS.version}`;
   document.getElementById("cpu").getElementsByClassName("par")[0].textContent = `${Number(info.server.cpu.par).toFixed(0)}%`
@@ -25,7 +27,7 @@ async function reloadAPI() {
 
   document.getElementById("mem").getElementsByClassName("par")[0].textContent = `${Number(info.server.mem.par).toFixed(0)}%(${(info.server.mem.total - info.server.mem.free).toFixed(0)}GB/${info.server.mem.total.toFixed(0)}GB)`
   document.getElementById("mem").getElementsByClassName("fill")[0].style.width = `${Number(info.server.mem.par).toFixed(0)}%`
-  const backup = await get("/api/backuplist")
+  const backup = data.backups
   backupBody.innerText = ""
   backup.todaybackuplist.forEach(l => {
     let type = "backup"

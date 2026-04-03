@@ -13,9 +13,9 @@ function sortBackupsDescending(list) {
 }
 
 
-async function backupset(url=`${location.origin}/api/backuplist`) {
-  const res = await get(url)
-  const json = await res.json()
+async function backupset(data) {
+  if (!data) return;
+  const json = data
   const {allbackup,today} = json
 
   const todaybackuplist = sortBackupsDescending(json.todaybackuplist)
@@ -198,11 +198,12 @@ socket = new WebSocket(`${protocol}://${location.hostname}:${location.port}/ws?t
 
 setInterval(async()=>{
   if (location.search == "?debug") return
+  const res = await get(`${location.origin}/api/dashboard`)
+  const json = await res.json()
   // Backup
-  await backupset()
+  await backupset(json.backups)
   // Main
-  const infores = await get(`${location.origin}/api/info`)
-  const infojson = await infores.json()
+  const infojson = json.info
   document.getElementById("Sname").textContent = infojson.BDS.servername
   document.getElementById("Lname").textContent = infojson.BDS.levelname
   const par = infojson.BDS.player.now / infojson.BDS.player.max
@@ -224,8 +225,7 @@ setInterval(async()=>{
   }
 
   // Player
-  const playerres = await get(`${location.origin}/api/nowonline`)
-  const playerjson = await playerres.json()
+  const playerjson = json.onlines
   document.getElementById("players").innerHTML = ""
   for (const p of playerjson) {
     const li = document.createElement("li")
