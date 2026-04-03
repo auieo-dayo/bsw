@@ -150,3 +150,5 @@ config/config.js
 .env
 
 backup/
+
+datas/
