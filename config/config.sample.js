@@ -54,8 +54,13 @@ const config = {
                     "enabled":true,
                     // プレフィックスの設定 (デフォルトだと?p Playerか?playerinfo Playerで取得)
                     "prefix": ["?p","?playerinfo"]
+                },
+                "ban": {
+                    // 管理者用チャンネルからプレイヤーのBAN情報を管理する方法
+                    "enabled": true,
+                    "prefix": ["?b","?ban"]
                 }
-
+                
             }
         },
     },
@@ -75,7 +80,7 @@ const config = {
     // 退出時に座標を自動で保存
     "lastLocationLog": {
         // 座標を自動で保存するかどうか
-        "saveLocationLog": false,
+        "enable": false,
         // CouchDBの設定
         "CouchDB": {
             // ベースのDBのURL
@@ -92,7 +97,7 @@ const config = {
     // 死亡時に座標ログを保存
     "deathLocationLog": {
         // 座標を自動で保存するかどうか
-        "saveDeathLocationLog": false,
+        "enable": false,
         // CouchDBの設定
         "CouchDB": {
             // ベースのDBのURL

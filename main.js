@@ -18,10 +18,9 @@ const wstoken = require('./src/wstoken');
 const wst = new wstoken(60000)
 
 const config = require('./config/config');
-
 const nowtime = require("./src/nowtime")
 const playerstore = require("./src/playerList")
-
+const BanManager = require("./src/ban")
 
 
 function initCouch(baseurl, dbname, User) {
@@ -58,9 +57,9 @@ const Couch = {
   dll: null
 }
 // lastlocationlog
-if (config.lastLocationLog.saveLocationLog) Couch.lll = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
+if (config.lastLocationLog.enable) Couch.lll = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
 // deathlocationlog
-if (config.deathLocationLog.saveDeathLocationLog) Couch.dll = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
+if (config.deathLocationLog.enable) Couch.dll = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
 
 
 // project-root
@@ -285,7 +284,7 @@ app.post('/api/bds/send',async (req,res,next)=>{
         logmng.add({"type":"death","player":source,"data":`${source}(${reason})`,"reason":`${reason}`,"location":location,"time":Date.now()})
 
         // Couch
-        if (config.deathLocationLog.saveDeathLocationLog) {
+        if (config.deathLocationLog.enable) {
           try {
             const json = {playername:source,"data":`${source}(${reason})`,reason,location,"timestamp":Date.now(),worldname}
             const res = await Couch.dll.post("/",json)
@@ -436,7 +435,6 @@ async function getinfo() {
     }
 }
 
-//  TODO:ここらへんのAPIをまとめて/api/dashboard作る
 
 app.get('/api/dashboard',async(req,res,next)=>{
   try {
@@ -635,7 +633,7 @@ async function PlayerinfotoDis(json) {
 
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
-    if (config.lastLocationLog.saveLocationLog) {
+    if (config.lastLocationLog.enable) {
       const res = await Couch.lll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
       const logoutdata = res.data.docs[0]
       if (logoutdata) {
@@ -673,7 +671,7 @@ async function DeathinfotoDis(playername,messageid) {
   embed.setFooter({ text: `Time:${nowtime().full}` })
 
   embed.setTitle(`[${playername}]の死亡情報`)
-  if (config.deathLocationLog.saveDeathLocationLog) {
+  if (config.deathLocationLog.enable) {
     const res = await Couch.dll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
     const deathdata = res.data.docs
     if (!deathdata[0]) {
@@ -815,6 +813,11 @@ client.on(discord.Events.MessageCreate, message => {
             "enabled": config.Discord.notifications.toAdmin.deathInfo.enabled,
             "prefix": config.Discord.notifications.toAdmin.deathInfo.prefix,
             "description": "最新十件で死亡場所等を取得します(CouchDB必須)"
+          },
+          "BAN": {
+            "enabled": config.Discord.notifications.toAdmin.ban.enabled,
+            "prefix": config.Discord.notifications.toAdmin.ban.prefix,
+            "description":"BAN系の操作(list,isbanned,ban,unban)"
           }
         }
        const md = Object.entries(commands)
@@ -842,12 +845,74 @@ client.on(discord.Events.MessageCreate, message => {
         const prefix = config.Discord.notifications.toAdmin.deathInfo.prefix.find(pre =>
           message.content.startsWith(`${pre} `)
         )
-      if (prefix){ 
-        const content = message.content.slice(prefix.length+1)
-        DeathinfotoDis(content,message.id)
+        if (prefix){ 
+          const content = message.content.slice(prefix.length+1)
+          DeathinfotoDis(content,message.id)
         }
       }
+      // BAN プレフィックスで始まっていたら
+      if (config.Discord.notifications.toAdmin.ban.enabled && config.Discord.notifications.toAdmin.ban.prefix.some(pre => message.content.startsWith(pre))) {
+        const prefix = config.Discord.notifications.toAdmin.ban.prefix.find(pre =>
+          message.content.startsWith(`${pre} `) 
+        )
+        if (prefix){ 
+          const content = message.content.slice(prefix.length+1).trim().split(/\s+/);
+          if (!content[0]) {
+            return sendLongMessage(channels.admin,"# list,isbanned,ban,unbanを指定してください")
+          }
+          switch(content[0]) {
+            case "list": {
+              let md = ""
+              for (const p of bm.allbanlist()) {
+                md+=`- ${p.gamertag}(${p.reason})\n`
+              }
+              const embed = new discord.EmbedBuilder()
+                .setTitle("BAN List")
+                .setTimestamp(new Date())
+                .setDescription(md || "Error")
+                .setColor(0xebba34)
+              message.reply({embeds:[embed]})
+              break;
+            }
+            case "isbanned": {
+              if (!content[1]) {
+                return message.reply("プレイヤー名がありません")
+              }
+              const info = bm.getinfo(content[1])
+              const embed = new discord.EmbedBuilder()
+                .setTitle(`[${content[1]}]のBAN情報`)
+                .setTimestamp(new Date())
+                .setColor(0xeb7734)
+              if (!info) embed.setDescription("BANされていません");else embed.setDescription(`BANされています。\n理由:${info.reason}\n-# BAN時刻::${info.time}`)
+              message.reply({embeds:[embed]})
+              break;
+            }
+            case "ban": {
+              if (!content[1]) return message.reply("プレイヤー名がありません");
+              if (!content[2]) return message.reply("理由がありません");
+              bm.ban(content[1],content[2])
+              if (onlinePlayer.players.has(content[1])) {
+                sendCommand(`kick ${content[1]}`)
+              };
+              message.reply({content:`${content[1]}を${content[2]}でBANしました`})
+              break;
+            }
+            case "unban": {
+              if (!content[1]) return message.reply("プレイヤー名がありません");
+              const res = bm.unban(content[1])
+              if (!res.delete) return message.reply({content:"BAN解除に失敗しました"});
+              message.reply(`${res.gamertag}のBAN解除に成功しました。(${res.reason})\n-# BAN時刻:${res.time}`)
+              break;
+            }
+            case "help": {
+              message.reply({content:"# BanHelp\nlist\nisbanned `<playername>`\nban `<playername>` `<reason>`\nunban `<playername>`"})
+              break;
+            }
+          }
+          }
+      }
     }
+
 });
 
 
@@ -1123,6 +1188,8 @@ try {
 backup(true)
 addon_copy()
 
+const bm = new BanManager(root)
+
 // BDS Run
 const bds = spawn(BDS_file,{
   detached: true,
@@ -1190,6 +1257,10 @@ rl.on('line', (line) => {
         WSbroadcast({"type":"PlayerJoin","data":playername})
         onlinePlayer.join(json)
         LLtoDis(json.name,"join")
+        if (bm.isbanned(playername)) {
+          sendCommand(`kick ${playername}`)
+          channels.admin.send({content:`BAN者[${playername}]を自動キックしました`})
+        }
         if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))
     }
 
@@ -1205,7 +1276,7 @@ rl.on('line', (line) => {
 
         onlinePlayer.leave(json.name)
         LLtoDis(json.name,"logout")
-        backup(true)
+        if (!bm.isbanned(playername)) backup(true);
         if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${playername}`))
     }
     if (/^\[.* INFO\] Server started./.test(line)) {
@@ -1249,7 +1320,7 @@ rl.on('line', (line) => {
 
       if (json.type == "Logger" && json.cmd == "playerLeave") {
         const {source} = json;
-        if (!config.lastLocationLog.saveLocationLog) return
+        if (!config.lastLocationLog.enable) return
         (async()=>{
           try {
             const playername = source.replace(/\(.* .* .*\)/,"")
