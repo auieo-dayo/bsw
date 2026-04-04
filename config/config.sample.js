@@ -67,8 +67,12 @@ const config = {
         },
     },
     "backup": {
+        // バックアップを有効化するかどうか
+        "enabled":true,
         // 自動バックアップの間隔を設定します(分)
         "interval": 30,
+        // プレイヤーが抜けたときにバックアップするかどうか
+        "leavePlayerBackup": true,
         // 人がいないときに自動バックアップを止めるかどうか
         "pauseIfNoPlayer": true,
         // このプレイヤーだけの場合、バックアップをスキップ(pauseIfNoPlayerがtrueの場合のみ)

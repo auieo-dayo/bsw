@@ -895,6 +895,7 @@ async function buildSnapshot(dir) {
 let beforeBackupTime = Date.now()
 async function backup(notskip = false, full = false) {
   try {
+    if (!config.backup.enabled) return
     const elapsed = Date.now() - beforeBackupTime;
     const intervalMs = config.backup.interval * 60 * 1000;
 
@@ -976,6 +977,7 @@ async function backup(notskip = false, full = false) {
 // 自動0時フルバックアップ
 
 function scheduleDailyFullBackup() {
+  if (!config.backup.enabled) return
   const now = new Date();
   const nextMidnight = new Date(
     now.getFullYear(),
@@ -1221,17 +1223,13 @@ rl.on('line', (line) => {
 
         onlinePlayer.leave(json.name)
         LLtoDis(json.name,"logout")
-        if (!bm.isbanned(playername)) backup(true);
+        if (!bm.isbanned(playername) && config.backup.leavePlayerBackup) backup(true);
         if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${playername}`))
     }
     if (/^\[.* INFO\] Server started./.test(line)) {
       if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue("Server Started"))
       server_started = true
       if (config.Discord.enabled) client.login(config.Discord.TOKEN);
-    }
-
-    if (/^\[.* INFO\] \[Json\] .* \| .* \| .* \| For entity .*, "attack_interval" is disabled \(max <= 0\); goal will fall back to "scan_interval" \(ticks\)\./.test(line)) {
-      return
     }
 
     if (/^\[.* INFO\] Server stop requested\./.test(line)) {
