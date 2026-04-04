@@ -11,7 +11,7 @@ async function isbanned(bm,playername,message) {
     .setTimestamp(new Date())
     .setColor(0xeb7734)
     .setTimestamp(new Date())
-    if (!info) embed.setDescription("BANされていません");else embed.setDescription(`BANされています。\n理由:${info.reason}\n-# BAN時刻::${info.time}`)
+    if (!info) embed.setDescription("BANされていません");else embed.setDescription(`BANされています。\n理由:${info.reason}\n-# BANした人:${info.author.author}(${info.author.isdiscord ? "Discord" : "Minecraft"})\n-# BAN時刻:${info.time}`)
     await message.reply({embeds:[embed]})
 }
 module.exports = isbanned

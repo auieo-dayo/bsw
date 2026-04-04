@@ -796,7 +796,7 @@ client.on(discord.Events.MessageCreate, message => {
           switch(content[0]) {
             case "list": return discordCommands.admin.ban.list(bm,message)
             case "isbanned": return discordCommands.admin.ban.isbanned(bm,content[1],message)
-            case "ban": return discordCommands.admin.ban.ban(content[1],content[2],bm,onlinePlayer,bds.stdin,message)
+            case "ban": return discordCommands.admin.ban.ban(content[1],content[2],bm,onlinePlayer,bds.stdin,message,{author:message.author,isdiscord:true})
             case "pardon": return discordCommands.admin.ban.pardon(content[1],bm,message)
             case "help": return message.reply({content:"# BanHelp\nlist\nisbanned `<playername>`\nban `<playername>` `<reason>`\npardon `<playername>`"})
           }
@@ -810,7 +810,8 @@ client.on(discord.Events.MessageCreate, message => {
 
 client.on(discord.Events.InteractionCreate,async (interaction)=>{
   if (!interaction.isCommand()) return;
-  const { commandName, channel, options, id } = interaction;
+  const { commandName, channel, options } = interaction;
+  
   // PlayerListの場合
   if (commandName == "pl" && [config.Discord.notifications.chat.channelId,config.Discord.notifications.toAdmin.channelId].includes(channel.id)) return await discordCommands.chat.pl(onlinePlayer,interaction);
 
@@ -838,7 +839,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
     
     if (sub == "ban") {
       const reason = options.getString("reason")
-      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction)
+      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction,{author:interaction.user.username,isdiscord:true})
     }
 
     switch(sub) {

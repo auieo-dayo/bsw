@@ -27,9 +27,9 @@ class BanManager {
     save() {
         fs.writeFileSync(this.path.fullpath,JSON.stringify(Object.fromEntries(this.cache),null,2))
     }
-    ban(gamertag,reason="") {
+    ban(gamertag,reason="",author) {
         if (!gamertag) return
-        this.cache.set(gamertag,{gamertag,reason,time:Date.now()})
+        this.cache.set(gamertag,{gamertag,reason,author,time:Date.now()})
         this.save()
         return {gamertag,reason}
     }
@@ -37,7 +37,7 @@ class BanManager {
         const data = this.cache.get(gamertag)
         const del = this.cache.delete(gamertag)
         this.save()
-        return {delete:del,gamertag:data.gamertag,reason:data.reason,time:data.time}
+        return {delete:del,gamertag:data.gamertag,reason:data.reason,time:data.time,author:data.author}
     }
     isbanned(gamertag) {
         return this.cache.has(gamertag)

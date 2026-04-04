@@ -46,6 +46,12 @@ const commandlist = [
                         description:"対象プレイヤーのゲーマータグ",
                         type: ApplicationCommandOptionType.String,
                         required: true
+                    },
+                    {
+                        name: "reason",
+                        description:"BAN理由",
+                        type: ApplicationCommandOptionType.String,
+                        required: true
                     }
                 ]
             },
