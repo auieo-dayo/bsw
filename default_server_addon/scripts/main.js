@@ -223,9 +223,9 @@ system.beforeEvents.startup.subscribe((ev)=>{
                     }
                 }
             } else if (json.type == "getplayerinfo") {
-                const {playername,messageid} = json
+                const {playername} = json
                 
-                const returnjson = {"type":"playerinfo",playername,"iserr":false,messageid,"data": {
+                const returnjson = {"type":"playerinfo",playername,"iserr":false,"data": {
                     "dimension": "",
                     "location": {"x": NaN,"y": NaN,"z": NaN},
                     "hp": {"now":NaN,"max":20},

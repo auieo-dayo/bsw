@@ -9,57 +9,33 @@ const PropertiesReader = require('properties-reader');
 const fs = require("fs-extra")
 const chalk = require('chalk');
 const crypto = require("crypto");
-const axios = require("axios");
 const discord = require("discord.js")
 const { v4: uuidv4 } = require('uuid');
+
 
 const wslimit = require('./src/wslatelimit');
 const wstoken = require('./src/wstoken');
 const wst = new wstoken(60000)
-
 const config = require('./config/config');
-const nowtime = require("./src/nowtime")
 const playerstore = require("./src/playerList")
 const BanManager = require("./src/ban")
+const discordCommands = require('./src/discord/commands');
+const CouchManager = require("./src/couch");
+const { setCommands } = require("./src/discord/setGuildCommands")
 
-
-function initCouch(baseurl, dbname, User) {
-  const couch = axios.create({
-    baseURL: `${baseurl}/${dbname}`,
-    auth: {
-      username: User.name,
-      password: User.pass
-    }
-  });
-
-  couch.get("/_index").then((res) => {
-    const exists = res.data.indexes.some(v => v.name === "player_timestamp_index");
-
-    if (!exists) {
-      couch.post("/_index", {
-        index: {
-          fields: ["playername", "timestamp"]
-        },
-        name: "player_timestamp_index"
-      });
-    }
-  }).catch(console.error);
-
-  return couch;
-}
 
 
 /**
- * @type {{lll:import('axios').AxiosInstance | null,dll:import('axios').AxiosInstance | null}}
+  * @type {{lll:CouchManager | null,dll:CouchManager | null}}
  */
 const Couch = {
   lll: null,
   dll: null
 }
 // lastlocationlog
-if (config.lastLocationLog.enable) Couch.lll = initCouch(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
+if (config.lastLocationLog.enable) Couch.lll = new CouchManager(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
 // deathlocationlog
-if (config.deathLocationLog.enable) Couch.dll = initCouch(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
+if (config.deathLocationLog.enable) Couch.dll = new CouchManager(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
 
 
 // project-root
@@ -603,7 +579,7 @@ async function LLtoDis(name,type) {
   .setTitle(`${name}が${type}`)
   .setDescription(`[${servername}]${worldname}`)
   .setColor(hex)
-  .setFooter({ text: `Time:${nowtime().full}` })
+  .setTimestamp(new Date())
   await channels.chat.send({ embeds: [embed] });
 }
 
@@ -617,7 +593,7 @@ async function DeathtoDis(name,data) {
   .setTitle(`${name}(${data})`)
   .setDescription(`[${servername}]${worldname}`)
   .setColor(0xad0000)
-  .setFooter({ text: `Time:${nowtime().full}` })
+  .setTimestamp(new Date())
   await channels.chat.send({ embeds: [embed] });
 }
 
@@ -626,10 +602,10 @@ async function PlayerinfotoDis(json) {
   if (!channels.admin) return
   if (!config.Discord.notifications.toAdmin.playerInfo.enabled) return
 
-  const {playername,iserr,messageid,data} = json
+  const {playername,iserr,data} = json
 
   const embed = new discord.EmbedBuilder()
-  embed.setFooter({ text: `Time:${nowtime().full}` })
+    .setTimestamp(new Date())
 
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
@@ -656,47 +632,10 @@ async function PlayerinfotoDis(json) {
     embed.setDescription(`${dim}\n${location}\n${hp}\n${gm}\n${mainhand}`)
     embed.setColor(0xabd656)
   }
-
-  const message = await channels.admin.messages.fetch(messageid)
-  await message.reply({ embeds: [embed] });
+  await channels.admin.send({ embeds: [embed] });
 }
 
-async function DeathinfotoDis(playername,messageid) {
-  if (!client.isReady()) return
-  if (!channels.admin) return
-  if (!config.Discord.notifications.toAdmin.deathInfo.enabled) return
-  if (!messageid) return
 
-  const embed = new discord.EmbedBuilder()
-  embed.setFooter({ text: `Time:${nowtime().full}` })
-
-  embed.setTitle(`[${playername}]の死亡情報`)
-  if (config.deathLocationLog.enable) {
-    const res = await Couch.dll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
-    const deathdata = res.data.docs
-    if (!deathdata[0]) {
-      embed.setDescription(`[${playername}]の死亡情報が見つかりませんでした。`)
-      embed.setColor(0xed0000)
-    } else {
-      let text = ""
-      deathdata.forEach((v)=>{
-      const date = new Date(v.timestamp)
-        const dateja = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}時${String(date.getMinutes()).padStart(2, "0")}分${String(date.getSeconds()).padStart(2, "0")}秒`
-        text+=`- ${dateja}\n\`(${v.location.x.toFixed(0)} ${v.location.y.toFixed(0)} ${v.location.z.toFixed(0)},${v.data})\`\n\n`
-      })
-      embed.setDescription(text)
-      embed.setColor(0x1fd15e)
-  }
-  } else {
-    embed.setDescription("# configのdeathLocationLogの設定をしてください")
-    embed.setColor(0xed0000)
-  }
-  
-  
-
-  const message = await channels.admin.messages.fetch(messageid)
-  await message.reply({ embeds: [embed] });
-}
 
 const chatmng = {
   "sendtoMC": async(name,message) => {
@@ -725,6 +664,8 @@ const chatmng = {
 
 client.once(discord.Events.ClientReady, async () => {
     if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue(`[Discord]Login success: ${client.user.tag}`));
+    
+    // Channel取得
     try {
         if (config.Discord.notifications.chat.enabled) {
           channels.chat = await client.channels.fetch(`${config.Discord.notifications.chat.channelId}`,{force: true,allowUnknownGuild: true});
@@ -734,7 +675,7 @@ client.once(discord.Events.ClientReady, async () => {
           channels.admin = await client.channels.fetch(`${config.Discord.notifications.toAdmin.channelId}`,{force: true,allowUnknownGuild: true});
         }
 
-
+        await setCommands(client,config.Discord.guildId)
 
         if (config.Discord.notifications.serverStatus.enabled) {
           channels.serverStatus = await client.channels.fetch(`${config.Discord.notifications.serverStatus.channelId}`,{force: true,allowUnknownGuild: true});
@@ -742,7 +683,7 @@ client.once(discord.Events.ClientReady, async () => {
           .setTitle("サーバーがスタートしました。")
           .setDescription(`[${servername}]${worldname}`)
           .setColor(0x6ff542)
-          .setFooter({ text: `Time:${nowtime().full}` })
+          .setTimestamp(new Date())
           await channels.serverStatus.send({embeds:[serverStartEmbed]})
         }
 
@@ -751,6 +692,8 @@ client.once(discord.Events.ClientReady, async () => {
     }
 });
 
+
+// Discordチャットイベント
 client.on(discord.Events.MessageCreate, message => {
   if (message.channelId == config.Discord.notifications.chat.channelId) {
     if (message.author.bot) return;
@@ -776,23 +719,12 @@ client.on(discord.Events.MessageCreate, message => {
           .join("\n\n")
       return message.reply(`# Helps\n${md}`)
     }
-    if (message.content == "?playerlist" || message.content == "?pl") {
-      (async()=>{
-        let list = "player...\n\n"
-        onlinePlayer.getAll().forEach((value)=>{
-          list+=`- <${value.name}>\n`
-        });
-        const embed = new discord.EmbedBuilder()
-        .setTitle("プレイヤー一覧")
-        .setDescription(`${list}`)
-        .setColor(0xff4778)
-        .setFooter({ text: `Time:${nowtime().full}` })
-        await channels.chat.send({ embeds: [embed] });
-      })()
-      return
-    }
+    // PlayerListなら
+    if (message.content == "?playerlist" || message.content == "?pl") return discordCommands.chat.pl(onlinePlayer,message);
+
     // チャットを送信
     chatmng.sendtoMC(message.author.displayName,message.content)
+
 
     // 管理者用ディスコチャンネルなら
     } else if (message.channelId == config.Discord.notifications.toAdmin.channelId && config.Discord.notifications.toAdmin.enabled) {
@@ -828,6 +760,7 @@ client.on(discord.Events.MessageCreate, message => {
             .join("\n\n")
         message.reply(`# Helps\n${md}`)
       }
+      
       // playerinfo プレフィックスで始まっていたら
       if (config.Discord.notifications.toAdmin.playerInfo.enabled && config.Discord.notifications.toAdmin.playerInfo.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.toAdmin.playerInfo.prefix.find(pre =>
@@ -835,8 +768,7 @@ client.on(discord.Events.MessageCreate, message => {
         )
         if (prefix) {
           const content = message.content.slice(prefix.length+1)
-          const json = JSON.stringify({"type":"getplayerinfo","playername":content,"messageid":message.id}).replaceAll("\"","'").replaceAll("\\","\\\\'")
-          sendCommand(`send "${json}"`)
+          discordCommands.admin.p(bds.stdin,message,content)
         }
      } 
 
@@ -847,9 +779,10 @@ client.on(discord.Events.MessageCreate, message => {
         )
         if (prefix){ 
           const content = message.content.slice(prefix.length+1)
-          DeathinfotoDis(content,message.id)
+          discordCommands.admin.d(content,message,channels.admin,Couch.dll)
         }
       }
+
       // BAN プレフィックスで始まっていたら
       if (config.Discord.notifications.toAdmin.ban.enabled && config.Discord.notifications.toAdmin.ban.prefix.some(pre => message.content.startsWith(pre))) {
         const prefix = config.Discord.notifications.toAdmin.ban.prefix.find(pre =>
@@ -858,62 +791,62 @@ client.on(discord.Events.MessageCreate, message => {
         if (prefix){ 
           const content = message.content.slice(prefix.length+1).trim().split(/\s+/);
           if (!content[0]) {
-            return sendLongMessage(channels.admin,"# list,isbanned,ban,unbanを指定してください")
+            return sendLongMessage(channels.admin,"# list,isbanned,ban,pardonを指定してください")
           }
           switch(content[0]) {
-            case "list": {
-              let md = ""
-              for (const p of bm.allbanlist()) {
-                md+=`- ${p.gamertag}(${p.reason})\n`
-              }
-              const embed = new discord.EmbedBuilder()
-                .setTitle("BAN List")
-                .setTimestamp(new Date())
-                .setDescription(md || "Error")
-                .setColor(0xebba34)
-              message.reply({embeds:[embed]})
-              break;
-            }
-            case "isbanned": {
-              if (!content[1]) {
-                return message.reply("プレイヤー名がありません")
-              }
-              const info = bm.getinfo(content[1])
-              const embed = new discord.EmbedBuilder()
-                .setTitle(`[${content[1]}]のBAN情報`)
-                .setTimestamp(new Date())
-                .setColor(0xeb7734)
-              if (!info) embed.setDescription("BANされていません");else embed.setDescription(`BANされています。\n理由:${info.reason}\n-# BAN時刻::${info.time}`)
-              message.reply({embeds:[embed]})
-              break;
-            }
-            case "ban": {
-              if (!content[1]) return message.reply("プレイヤー名がありません");
-              if (!content[2]) return message.reply("理由がありません");
-              bm.ban(content[1],content[2])
-              if (onlinePlayer.players.has(content[1])) {
-                sendCommand(`kick ${content[1]}`)
-              };
-              message.reply({content:`${content[1]}を${content[2]}でBANしました`})
-              break;
-            }
-            case "unban": {
-              if (!content[1]) return message.reply("プレイヤー名がありません");
-              const res = bm.unban(content[1])
-              if (!res.delete) return message.reply({content:"BAN解除に失敗しました"});
-              message.reply(`${res.gamertag}のBAN解除に成功しました。(${res.reason})\n-# BAN時刻:${res.time}`)
-              break;
-            }
-            case "help": {
-              message.reply({content:"# BanHelp\nlist\nisbanned `<playername>`\nban `<playername>` `<reason>`\nunban `<playername>`"})
-              break;
-            }
+            case "list": return discordCommands.admin.ban.list(bm,message)
+            case "isbanned": return discordCommands.admin.ban.isbanned(bm,content[1],message)
+            case "ban": return discordCommands.admin.ban.ban(content[1],content[2],bm,onlinePlayer,bds.stdin,message)
+            case "pardon": return discordCommands.admin.ban.pardon(content[1],bm,message)
+            case "help": return message.reply({content:"# BanHelp\nlist\nisbanned `<playername>`\nban `<playername>` `<reason>`\npardon `<playername>`"})
           }
-          }
+        }
       }
     }
 
 });
+
+// Discordスラッシュコマンドイベント
+
+client.on(discord.Events.InteractionCreate,async (interaction)=>{
+  if (!interaction.isCommand()) return;
+  const { commandName, channel, options, id } = interaction;
+  // PlayerListの場合
+  if (commandName == "pl" && [config.Discord.notifications.chat.channelId,config.Discord.notifications.toAdmin.channelId].includes(channel.id)) return await discordCommands.chat.pl(onlinePlayer,interaction);
+
+  // 以降はAdminチャンネル用コマンドだからここでチェック
+  if (channel.id !== config.Discord.notifications.toAdmin.channelId) return
+
+
+  // PlayerInfo
+  if (commandName == "p" && config.Discord.notifications.toAdmin.playerInfo.enabled) {
+    const gamertag = options.getString("gamertag")
+    return await discordCommands.admin.p(bds.stdin,interaction,gamertag)
+  }
+  // DeathInfo
+  if (commandName == "d" && config.Discord.notifications.toAdmin.deathInfo.enabled) {
+    const gamertag = options.getString("gamertag")
+    await discordCommands.admin.d(gamertag,interaction,channel,Couch.dll)
+  }
+  // Ban系
+  if (commandName === "ban") {
+
+    const sub = options.getSubcommand();
+    
+    if (sub === "list") return await discordCommands.admin.ban.list(bm,interaction)
+    const gamertag = options.getString("gamertag")
+    
+    if (sub == "ban") {
+      const reason = options.getString("reason")
+      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction)
+    }
+
+    switch(sub) {
+      case "isbanned": return await discordCommands.admin.ban.isbanned(bm,gamertag,interaction)
+      case "pardon": return await discordCommands.admin.ban.pardon(gamertag,bm,interaction)
+    }
+  }
+})
 
 
 
@@ -1392,7 +1325,7 @@ function OnError(err) {
         .setTitle(`サーバーで例外エラーが発生しました${err.name}(${err.message})`)
         .setDescription(`[${servername}]${worldname}`)
         .setColor(0xf54242)
-        .setFooter({ text: `Time:${nowtime().full}` })
+        .setTimestamp(new Date())
         await channels.serverStatus.send({embeds:[serverErrEmbed]})
       }
     }catch(e) {
@@ -1423,7 +1356,7 @@ bds.on('close', async(code) => {
     .setTitle("サーバーが停止しました。")
     .setDescription(`[${servername}]${worldname}`)
     .setColor(0xf54242)
-    .setFooter({ text: `Time:${nowtime().full}` })
+    .setTimestamp(new Date())
     await channels.serverStatus.send({embeds:[serverStopEmbed]})
     
     await client.destroy()

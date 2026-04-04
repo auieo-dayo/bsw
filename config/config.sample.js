@@ -21,6 +21,8 @@ const config = {
         "TOKEN":"",
         // ディスコードを有効化するか
         "enabled":false,
+        // このBOTを使うサーバーID
+        "guildId": "",
         // ディスコードにBSWの情報を送信するか
         "notifications": {
             "chat": {
