@@ -7,10 +7,9 @@ async function isbanned(bm,playername,message) {
     return await message.reply("プレイヤー名がありません")
     }
     const info = bm.getinfo(playername)
-    const {expiredtime} = info
     let expiredtimetext = ``
-    if (!expiredtime) expiredtimetext = "**無期限**"; else {
-        expiredtimetext = `<t:${Math.floor(expiredtime / 1000)}:R>`
+    if (!info.expiredtime) expiredtimetext = "**無期限**"; else {
+        expiredtimetext = `<t:${Math.floor(info.expiredtime / 1000)}:R>`
     }
 
     const embed = new EmbedBuilder()

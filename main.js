@@ -1178,7 +1178,9 @@ sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).repl
 
 // BDS Output
 
-rl.on('line', (line) => {
+rl.on('line', (_line) => {
+
+  const line = _line.replace(/^NO LOG FILE! \- /,"")
     //serverVersion
     // [2025-12-13 17:42:36:209 INFO] Version: 1.21.130.4
     if (/^\[.* INFO\] Version: .*$/.test(line)) {
@@ -1196,7 +1198,7 @@ rl.on('line', (line) => {
         WSbroadcast({"type":"PlayerJoin","data":playername})
         onlinePlayer.join(json)
         LLtoDis(json.name,"join")
-        if (bm.isbanned(playername)) {
+        if (bm.isbanned(playername,true)) {
           const baninfo = bm.getinfo(playername)
           const BanStart = new Date(baninfo.time)
           const BanStartText = formatDate(BanStart)
@@ -1204,7 +1206,9 @@ rl.on('line', (line) => {
           const BanEndText = BanEnd ? msToYMDHMS(BanStart,BanEnd) : "無期限"
           const NowtoBanEndText = BanEnd ? msToYMDHMS(new Date(),BanEnd) : "無期限" 
 
-          sendCommand(`kick ${playername} "あなたは「§l${baninfo.reason}§r」により§l${BanStartText}§rから§l${BanEndText}§rの間BANされています。解除まで:§l${NowtoBanEndText}§r"`,true)
+          setTimeout(()=>{
+            sendCommand(`kick ${playername} "あなたは「§l${baninfo.reason}§r」により§l${BanStartText}§rから§l${BanEndText}§rの間BANされています。解除まで:§l${NowtoBanEndText}§r"`,true) 
+          },1000*4)
           channels.admin.send({content:`BAN者[${playername}]を自動キックしました`})
         }
         if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))

@@ -41,26 +41,51 @@ class BanManager {
         this.save()
         return {delete:del,gamertag:data.gamertag,reason:data.reason,time:data.time,author:data.author}
     }
-    isbanned(gamertag) {
+    isbanned(gamertag,deleteIfExpired=false) {
         const has = this.cache.has(gamertag)
+        // BANされていない場合
         if (!has) return false
-        // BANされている場合は一度詳細を取得
-        const info = this.getinfo(gamertag)
-        const {expiredtime} = info
-        // 有効期限がない場合はスキップ
-        if (!expiredtime) return true
-        // 有効期限が切れている場合はBAN解除
-        if (expiredtime <= Date.now()) {
-            this.pardon(gamertag)
+        const active = this.isActive(gamertag)
+        // 有効期限を確認
+        if (!active) {
+            // 有効期限切れかつフラグがtrueならBAN解除
+            if(deleteIfExpired) this.pardon(gamertag);
+        
             return false
         }
+
+        // 無期限BAN or 期限が切れていない場合
         return true
     }
-    getinfo(gamertag) {
-        return this.cache.get(gamertag) || null;
+    getinfo(gamertag,chkAndDeleteIfExpired=false) {
+        const info = this.cache.get(gamertag)
+        if (!info) return null
+        // 有効期限切れかつフラグがtrueならBAN解除
+        if (chkAndDeleteIfExpired && !this.isActive(gamertag)) {
+            this.pardon(gamertag);
+            return null
+        }
+        return info
+    
     }
     allbanlist() {
-        return [...this.cache.values()]
+        const now = Date.now();
+        const list = [];
+
+        this.cache.forEach((info) => {
+            if (!info.expiredtime || info.expiredtime >= now) {
+                list.push(info);
+            }
+        });
+
+        return list;
+    }
+    isActive(gamertag) {
+        const info = this.cache.get(gamertag)
+        const {expiredtime} = info
+        if (!expiredtime) return true
+        if (expiredtime <= Date.now()) return false
+        return true
     }
 
 }
