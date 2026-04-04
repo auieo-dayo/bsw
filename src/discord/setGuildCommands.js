@@ -52,6 +52,12 @@ const commandlist = [
                         description:"BAN理由",
                         type: ApplicationCommandOptionType.String,
                         required: true
+                    },
+                    {
+                        name: "expired",
+                        description: "BAN期間(時間)",
+                        type: ApplicationCommandOptionType.Number,
+                        required: false
                     }
                 ]
             },

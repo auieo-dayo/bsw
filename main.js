@@ -749,7 +749,7 @@ client.on(discord.Events.MessageCreate, message => {
           "BAN": {
             "enabled": config.Discord.notifications.toAdmin.ban.enabled,
             "prefix": config.Discord.notifications.toAdmin.ban.prefix,
-            "description":"BAN系の操作(list,isbanned,ban,unban)"
+            "description":"BAN系の操作(list,isbanned,ban,pardon)"
           }
         }
        const md = Object.entries(commands)
@@ -839,7 +839,10 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
     
     if (sub == "ban") {
       const reason = options.getString("reason")
-      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction,{author:interaction.user.username,isdiscord:true})
+      const expired = options.getNumber("expired")
+      let expiredtime = Date.now()
+      if (expired) expiredtime+=expired*60*1000
+      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction,{author:interaction.user.username,isdiscord:true},expired ? expiredtime : null)
     }
 
     switch(sub) {

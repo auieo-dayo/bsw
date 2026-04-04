@@ -13,6 +13,7 @@ class BanManager {
 
             fs.ensureDirSync(this.path.folder)
             if (!fs.existsSync(this.path.fullpath)) fs.writeFileSync(this.path.fullpath,`[]`);
+            this.unban = this.pardon
             this.load()
         } catch(e) {
             console.log(`[BanManager]Initialization - ${e}`)
@@ -27,20 +28,30 @@ class BanManager {
     save() {
         fs.writeFileSync(this.path.fullpath,JSON.stringify(Object.fromEntries(this.cache),null,2))
     }
-    ban(gamertag,reason="",author) {
+    ban(gamertag,reason="",author,expiredtime) {
         if (!gamertag) return
-        this.cache.set(gamertag,{gamertag,reason,author,time:Date.now()})
+        this.cache.set(gamertag,{gamertag,reason,author,time:Date.now(),expiredtime})
         this.save()
         return {gamertag,reason}
     }
-    unban(gamertag) {
+    pardon(gamertag) {
         const data = this.cache.get(gamertag)
+        if (!data) return {delete:false}
         const del = this.cache.delete(gamertag)
         this.save()
         return {delete:del,gamertag:data.gamertag,reason:data.reason,time:data.time,author:data.author}
     }
     isbanned(gamertag) {
-        return this.cache.has(gamertag)
+        const has = this.cache.has(gamertag)
+        if (!has) return false
+        // BANされている場合は一度詳細を取得
+        const info = this.getinfo(gamertag)
+        const {expiredtime} = info
+        // 有効期限がない場合はスキップ
+        if (!expiredtime) return true
+        // 有効期限が切れている場合はBAN解除
+        if (expiredtime <= Date.now()) this.pardon(gamertag);
+        return false
     }
     getinfo(gamertag) {
         return this.cache.get(gamertag) || null;
