@@ -82,7 +82,7 @@ const config = {
     // 退出時に座標を自動で保存
     "lastLocationLog": {
         // 座標を自動で保存するかどうか
-        "enable": false,
+        "enabled": false,
         // CouchDBの設定
         "CouchDB": {
             // ベースのDBのURL
@@ -99,7 +99,7 @@ const config = {
     // 死亡時に座標ログを保存
     "deathLocationLog": {
         // 座標を自動で保存するかどうか
-        "enable": false,
+        "enabled": false,
         // CouchDBの設定
         "CouchDB": {
             // ベースのDBのURL
