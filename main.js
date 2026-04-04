@@ -22,7 +22,7 @@ const BanManager = require("./src/ban")
 const discordCommands = require('./src/discord/commands');
 const CouchManager = require("./src/couch");
 const { setCommands } = require("./src/discord/setGuildCommands")
-
+const {formatDate,msToYMDHMS} = require("./src/formatDate")
 
 
 /**
@@ -841,7 +841,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
       const reason = options.getString("reason")
       const expired = options.getNumber("expired")
       let expiredtime = Date.now()
-      if (expired) expiredtime+=expired*60*1000
+      if (expired) expiredtime+=expired*60*60*1000
       return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction,{author:interaction.user.username,isdiscord:true},expired ? expiredtime : null)
     }
 
@@ -1194,8 +1194,16 @@ rl.on('line', (line) => {
         WSbroadcast({"type":"PlayerJoin","data":playername})
         onlinePlayer.join(json)
         LLtoDis(json.name,"join")
+        console.log(bm.isbanned(playername))
         if (bm.isbanned(playername)) {
-          sendCommand(`kick ${playername}`)
+          const baninfo = bm.getinfo(playername)
+          const BanStart = new Date(baninfo.time)
+          const BanStartText = formatDate(BanStart)
+          const BanEnd = baninfo.expiredtime ? new Date(baninfo.expiredtime) : null
+          const BanEndText = BanEnd ? msToYMDHMS(BanStart,BanEnd) : "無期限"
+          const NowtoBanEndText = BanEnd ? msToYMDHMS(new Date(),BanEnd) : "無期限" 
+
+          sendCommand(`kick ${playername} "あなたは「§l${baninfo.reason}§r」により§l${BanStartText}§rから§l${BanEndText}§rの間BANされています。解除まで:§l${NowtoBanEndText}§r"`,true)
           channels.admin.send({content:`BAN者[${playername}]を自動キックしました`})
         }
         if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))

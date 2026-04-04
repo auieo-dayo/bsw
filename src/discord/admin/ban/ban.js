@@ -1,9 +1,10 @@
 // content[1],content[2]
-async function ban(playername,reason,bm,onlinePlayer,stdin,message,author) {
+async function ban(playername,reason,bm,onlinePlayer,stdin,message,author,expiredtime) {
     
     if (!playername) return await message.reply("プレイヤー名がありません");
     if (!reason) return await message.reply("理由がありません");
-    bm.ban(playername,reason,author)
+    
+    bm.ban(playername,reason,author,expiredtime)
     if (onlinePlayer.players.has(playername)) {
         stdin.write(`kick ${playername}\n`)
     };

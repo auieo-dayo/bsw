@@ -30,7 +30,7 @@ class BanManager {
     }
     ban(gamertag,reason="",author,expiredtime) {
         if (!gamertag) return
-        this.cache.set(gamertag,{gamertag,reason,author,time:Date.now(),expiredtime})
+        this.cache.set(gamertag,{gamertag,reason,author,time:Date.now(),expiredtime: expiredtime || null})
         this.save()
         return {gamertag,reason}
     }
@@ -50,8 +50,11 @@ class BanManager {
         // 有効期限がない場合はスキップ
         if (!expiredtime) return true
         // 有効期限が切れている場合はBAN解除
-        if (expiredtime <= Date.now()) this.pardon(gamertag);
-        return false
+        if (expiredtime <= Date.now()) {
+            this.pardon(gamertag)
+            return false
+        }
+        return true
     }
     getinfo(gamertag) {
         return this.cache.get(gamertag) || null;
