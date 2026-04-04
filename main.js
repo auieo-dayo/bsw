@@ -1164,7 +1164,7 @@ function sendCommand(cmd,hidden=false) {
     console.log(`${chalk.green(cmd)}\n`)
     WSbroadcast({"type":"cmd","data":cmd})
     logmng.add({"type":"cmd","data":cmd,"time":Date.now()})
-    }
+  }
   
   //BDS Input
   bds.stdin.write(`${cmd}\n`);
@@ -1196,7 +1196,6 @@ rl.on('line', (line) => {
         WSbroadcast({"type":"PlayerJoin","data":playername})
         onlinePlayer.join(json)
         LLtoDis(json.name,"join")
-        console.log(bm.isbanned(playername))
         if (bm.isbanned(playername)) {
           const baninfo = bm.getinfo(playername)
           const BanStart = new Date(baninfo.time)
