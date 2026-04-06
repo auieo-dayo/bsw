@@ -33,9 +33,9 @@ const Couch = {
   dll: null
 }
 // lastlocationlog
-if (config.lastLocationLog.enable) Couch.lll = new CouchManager(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
+if (config.lastLocationLog.enabled) Couch.lll = new CouchManager(config.lastLocationLog.CouchDB.baseurl,config.lastLocationLog.CouchDB.dbname,config.lastLocationLog.CouchDB.user);
 // deathlocationlog
-if (config.deathLocationLog.enable) Couch.dll = new CouchManager(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
+if (config.deathLocationLog.enabled) Couch.dll = new CouchManager(config.deathLocationLog.CouchDB.baseurl,config.deathLocationLog.CouchDB.dbname,config.deathLocationLog.CouchDB.user); 
 
 
 // project-root
@@ -260,7 +260,7 @@ app.post('/api/bds/send',async (req,res,next)=>{
         logmng.add({"type":"death","player":source,"data":`${source}(${reason})`,"reason":`${reason}`,"location":location,"time":Date.now()})
 
         // Couch
-        if (config.deathLocationLog.enable) {
+        if (config.deathLocationLog.enabled) {
           try {
             const json = {playername:source,"data":`${source}(${reason})`,reason,location,"timestamp":Date.now(),worldname}
             const res = await Couch.dll.post("/",json)
@@ -609,7 +609,7 @@ async function PlayerinfotoDis(json) {
 
   if (iserr) {
     embed.setTitle(`[${playername}]が見つかりませんでした`)
-    if (config.lastLocationLog.enable) {
+    if (config.lastLocationLog.enabled) {
       const res = await Couch.lll.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 1 })
       const logoutdata = res.data.docs[0]
       if (logoutdata) {
@@ -1266,7 +1266,7 @@ rl.on('line', (_line) => {
 
       if (json.type == "Logger" && json.cmd == "playerLeave") {
         const {source} = json;
-        if (!config.lastLocationLog.enable) return
+        if (!config.lastLocationLog.enabled) return
         (async()=>{
           try {
             const playername = source.replace(/\(.* .* .*\)/,"")
