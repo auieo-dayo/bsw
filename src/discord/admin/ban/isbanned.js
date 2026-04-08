@@ -4,9 +4,12 @@ const { formatDate } = require("../../../formatDate");
 // content[1]
 async function isbanned(bm,playername,message) {
     if (!playername) {
-    return await message.reply("プレイヤー名がありません")
+        return await message.reply("プレイヤー名がありません")
     }
     const info = bm.getinfo(playername)
+    if (!info) {
+        return await message.reply(`${playername}はBANされていません`)
+    }
     let expiredtimetext = ``
     if (!info.expiredtime) expiredtimetext = "**無期限**"; else {
         expiredtimetext = `<t:${Math.floor(info.expiredtime / 1000)}:R>`
