@@ -1,6 +1,4 @@
 // Bedrock Server Wrapper
-const { spawn } = require('child_process');
-const readline = require('readline');
 const path = require("path")
 const WebSocket = require('ws');
 const dotenv = require("dotenv");
@@ -23,6 +21,7 @@ const discordCommands = require('./src/discord/commands');
 const CouchManager = require("./src/couch");
 const { setCommands } = require("./src/discord/setGuildCommands")
 const {formatDate,msToYMDHMS} = require("./src/formatDate")
+const BDS = require("./src/BDS")
 
 
 /**
@@ -51,9 +50,6 @@ const BackupInterval = config.backup.interval
 
 const onlinePlayer = new playerstore()
 
-// BDS Version
-
-let BDSver = NaN
 
 // BDS Paths
 
@@ -78,7 +74,6 @@ const logPath = {
 }
 fs.ensureDirSync(logPath.folder)
 
-let server_started = false
 let worldname = process.env["level-name"]
 let servername = process.env["server-name"]
 
@@ -92,7 +87,6 @@ let servername = process.env["server-name"]
 
 const PluginManager = require("./src/pluginManager")
 
-const rawSendCommand = sendCommand
 const apis = {
   sendChat : {
     mc: (msg)=>{apis.sendCommand(`tellraw @a ${JSON.stringify({"rawtext":[{"text":msg}]})}`,true)},
@@ -110,7 +104,7 @@ const apis = {
     const blist = get_backuplist("",getAllBackupList)
     return blist?.data ?? []   
   },
-  sendCommand(cmd,ishidden=false){rawSendCommand(cmd,ishidden)}
+  sendCommand(cmd,ishidden=false){bds.sendCommand(cmd,ishidden)}
 }
 
 
@@ -280,10 +274,10 @@ app.post('/api/bds/send',async (req,res,next)=>{
         const {source,isfull,isEntity} = body
         if (isfull) {
           await backup(true,true)
-          if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cFull Backup Success"}]}`)
+          if (isEntity && source) bds.sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cFull Backup Success"}]}`)
         } else {
           await backup(true)
-          if (isEntity && source) sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cBackup Success"}]}`)
+          if (isEntity && source) bds.sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cBackup Success"}]}`)
         }
         res.status(200).type("json").send({"status":true})
         break;
@@ -395,7 +389,7 @@ async function getinfo() {
           "max": Number(process.env["max-players"]),
           "now": onlinePlayer.getAll().length
         },
-        "version": BDSver
+        "version": bds.BDSver
       },
     "server": {
       "mem": {
@@ -495,7 +489,7 @@ ws.on('message', (message) => {
     try {
       const msg = JSON.parse(message)
       if (msg.type == "cmd") {
-        sendCommand(`${String(msg.data)}`)
+        bds.sendCommand(`${String(msg.data)}`)
       }
       if (msg.type == "servercmd") {
         if (msg.data == "playerlist") {
@@ -644,7 +638,7 @@ const chatmng = {
     logmng.add({"type":"chat","data":`[D]${name}:${message}`,"player":`${name}`,"message":`${message}`,"source":"Discord","time":Date.now()})
     WSbroadcast({ type: "chat", data: `[D]${name}:${message}`})
     const rawtext = {"rawtext":[{"text":`${returnText.replace(/\n/g,"\\n")}`}]}
-    if (onlinePlayer.getAll().length != 0) sendCommand(`tellraw @a ${JSON.stringify(rawtext)}`,true)
+    if (onlinePlayer.getAll().length != 0) bds.sendCommand(`tellraw @a ${JSON.stringify(rawtext)}`,true)
 
   },
   "sendtoDis": async(name,message) => {
@@ -768,7 +762,7 @@ client.on(discord.Events.MessageCreate, message => {
         )
         if (prefix) {
           const content = message.content.slice(prefix.length+1)
-          discordCommands.admin.p(bds.stdin,message,content)
+          discordCommands.admin.p(bds,message,content)
         }
      } 
 
@@ -796,7 +790,7 @@ client.on(discord.Events.MessageCreate, message => {
           switch(content[0]) {
             case "list": return discordCommands.admin.ban.list(bm,message)
             case "isbanned": return discordCommands.admin.ban.isbanned(bm,content[1],message)
-            case "ban": return discordCommands.admin.ban.ban(content[1],content[2],bm,onlinePlayer,bds.stdin,message,{author:message.author,isdiscord:true})
+            case "ban": return discordCommands.admin.ban.ban(content[1],content[2],bm,onlinePlayer,bds,message,{author:message.author,isdiscord:true})
             case "pardon": return discordCommands.admin.ban.pardon(content[1],bm,message)
             case "help": return message.reply({content:"# BanHelp\nlist\nisbanned `<playername>`\nban `<playername>` `<reason>`\npardon `<playername>`"})
           }
@@ -822,7 +816,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
   // PlayerInfo
   if (commandName == "p" && config.Discord.notifications.toAdmin.playerInfo.enabled) {
     const gamertag = options.getString("gamertag")
-    return await discordCommands.admin.p(bds.stdin,interaction,gamertag)
+    return await discordCommands.admin.p(bds,interaction,gamertag)
   }
   // DeathInfo
   if (commandName == "d" && config.Discord.notifications.toAdmin.deathInfo.enabled) {
@@ -842,7 +836,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
       const expired = options.getNumber("expired")
       let expiredtime = Date.now()
       if (expired) expiredtime+=expired*60*60*1000
-      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds.stdin,interaction,{author:interaction.user.username,isdiscord:true},expired ? expiredtime : null)
+      return await discordCommands.admin.ban.ban(gamertag,reason,bm,onlinePlayer,bds,interaction,{author:interaction.user.username,isdiscord:true},expired ? expiredtime : null)
     }
 
     switch(sub) {
@@ -1130,17 +1124,16 @@ addon_copy()
 const bm = new BanManager(root)
 
 // BDS Run
-const bds = spawn(BDS_file,{
-  detached: true,
-  stdio: ['pipe', 'pipe', 'pipe'],
-  cwd: `${BDS_path}`
-});
+/**
+ * @type {BDS}
+ */
+let bds = new BDS(BDS_path,BDS_file,logmng,wss)
 
 // 初回Backup
 let startedBackup = false;
 
 const waitBackup = setInterval(() => {
-  if (server_started && !startedBackup) {
+  if (bds.server_started && !startedBackup) {
     startedBackup = true;
     clearInterval(waitBackup);
     // 定期バックアップ
@@ -1151,95 +1144,49 @@ const waitBackup = setInterval(() => {
 }, 500); // 0.5秒ごとにチェック
 
 
-// BDS InOut Setting
 
-const rl = readline.createInterface({
-  input: bds.stdout,
-  output: bds.stdin,
-});
-
-// BDS Runcommand
-function sendCommand(cmd,hidden=false) {
-  if (!hidden) {
-    console.log(`${chalk.green(cmd)}\n`)
-    WSbroadcast({"type":"cmd","data":cmd})
-    logmng.add({"type":"cmd","data":cmd,"time":Date.now()})
-  }
-  
-  //BDS Input
-  bds.stdin.write(`${cmd}\n`);
-  
-}
 
 // アドオンにPWを伝える
 
-sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+bds.on("started",()=>{
+  if (config.Discord.enabled) client.login(config.Discord.TOKEN);
+  bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+})
+// BDS Spawn
+bds.on("spawn",(json)=>{
+  logmng.add({"type":"PlayerJoin","data":json.name,"time":Date.now()})
+  WSbroadcast({"type":"PlayerJoin","data":json.name})
+  onlinePlayer.join(json)
+  LLtoDis(json.name,"join")
+  if (bm.isbanned(json.name,true)) {
+    const baninfo = bm.getinfo(json.name)
+    const BanStart = new Date(baninfo.time)
+    const BanStartText = formatDate(BanStart)
+    const BanEnd = baninfo.expiredtime ? new Date(baninfo.expiredtime) : null
+    const BanEndText = BanEnd ? msToYMDHMS(BanStart,BanEnd) : "無期限"
+    const NowtoBanEndText = BanEnd ? msToYMDHMS(new Date(),BanEnd) : "無期限" 
 
+    setTimeout(()=>{
+      bds.sendCommand(`kick ${json.name} "あなたは「§l${baninfo.reason}§r」により§l${BanStartText}§rから§l${BanEndText}§rの間BANされています。解除まで:§l${NowtoBanEndText}§r"`,true) 
+    },1000*4)
+    channels.admin.send({content:`BAN者[${json.name}]を自動キックしました`})
+  }
+  if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${json.name}`))
+})
 
-// BDS Output
+// BDS Leave
+bds.on("leave",(json)=>{
+  logmng.add({"type":"PlayerLeave","data":json.name,"time":Date.now()})
+  WSbroadcast({"type":"PlayerLeave","data":json.name})
 
-rl.on('line', (_line) => {
+  onlinePlayer.leave(json.name)
+  LLtoDis(json.name,"logout")
+  if (!bm.isbanned(json.name) && config.backup.leavePlayerBackup) backup(true);
+  if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${json.name}`))
+})
 
-  const line = _line.replace(/^NO LOG FILE! \- /,"")
-    //serverVersion
-    // [2025-12-13 17:42:36:209 INFO] Version: 1.21.130.4
-    if (/^\[.* INFO\] Version: .*$/.test(line)) {
-      BDSver = line.match(/Version:\s*([0-9].*)/)[1]
-      if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue(`BDS-Version:${BDSver}`))
-    }
-
-    // PlayerSpawned
-
-    if (/^\[.* INFO\] Player Spawned: .* xuid: .*, pfid:.*$/.test(line)) {
-        const playername = String(line.replace(/^\[.* INFO\] Player Spawned: /,"").replace(/ xuid:.*$/,""))
-        // const xuid = Number(line.replace(/^\[.* INFO\] Player Spawned: .* xuid: /,"").replace(/, pfid: .*$/,""))
-        const json = {"name":playername,"tags":[""]}
-        logmng.add({"type":"PlayerJoin","data":playername,"time":Date.now()})
-        WSbroadcast({"type":"PlayerJoin","data":playername})
-        onlinePlayer.join(json)
-        LLtoDis(json.name,"join")
-        if (bm.isbanned(playername,true)) {
-          const baninfo = bm.getinfo(playername)
-          const BanStart = new Date(baninfo.time)
-          const BanStartText = formatDate(BanStart)
-          const BanEnd = baninfo.expiredtime ? new Date(baninfo.expiredtime) : null
-          const BanEndText = BanEnd ? msToYMDHMS(BanStart,BanEnd) : "無期限"
-          const NowtoBanEndText = BanEnd ? msToYMDHMS(new Date(),BanEnd) : "無期限" 
-
-          setTimeout(()=>{
-            sendCommand(`kick ${playername} "あなたは「§l${baninfo.reason}§r」により§l${BanStartText}§rから§l${BanEndText}§rの間BANされています。解除まで:§l${NowtoBanEndText}§r"`,true) 
-          },1000*4)
-          channels.admin.send({content:`BAN者[${playername}]を自動キックしました`})
-        }
-        if (config.console.joinPlayerLogToConsole) console.log(chalk.bgBlue(`PlayerJoin:${playername}`))
-    }
-
-    // PlayerLeave
-
-    if (/^\[.* INFO\] Player disconnected: .*, xuid: .*, pfid:.*$/.test(line)) {
-        const playername = String(line.replace(/^\[.* INFO\] Player disconnected: /,"").replace(/, xuid: .*, pfid: .*$/,""))
-        // const xuid = Number(line.replace(/^\[.* INFO\] Player disconnected: .*, xuid: /,"").replace(/, pfid: .*$/,""))
-        const json = {"name":playername,"tags":[""]}
-
-        logmng.add({"type":"PlayerLeave","data":playername,"time":Date.now()})
-        WSbroadcast({"type":"PlayerLeave","data":playername})
-
-        onlinePlayer.leave(json.name)
-        LLtoDis(json.name,"logout")
-        if (!bm.isbanned(playername) && config.backup.leavePlayerBackup) backup(true);
-        if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${playername}`))
-    }
-    if (/^\[.* INFO\] Server started./.test(line)) {
-      if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue("Server Started"))
-      server_started = true
-      if (config.Discord.enabled) client.login(config.Discord.TOKEN);
-    }
-
-    if (/^\[.* INFO\] Server stop requested\./.test(line)) {
-      sendCommand("stop")
-    }
-
-    if (!line.trim()) return
+// BDS line
+bds.on('line', (line) => {
 
     if (/^\[.* INFO\] \[Scripting\] \{"type":".*","cmd":".*","source":".*","data":".*","isEntity":.*\}/.test(line)) {
       const json = JSON.parse(line.match(/\{"type":".*","cmd":".*","source":".*","data":".*","isEntity":.*\}/)[0])
@@ -1249,9 +1196,9 @@ rl.on('line', (_line) => {
         const {source,isEntity} = json;
         (async()=>{
           await addon_copy()
-          sendCommand("reload")
-          if (!isEntity) return
-          sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cDefaultAddonCopy & AddonReload Success"}]}`)
+          bds.sendCommand("reload")
+          if (!isEntity) return {skip:true}
+          bds.sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cDefaultAddonCopy & AddonReload Success"}]}`)
         })()
       }
 
@@ -1259,14 +1206,14 @@ rl.on('line', (_line) => {
         const {source,isEntity} = json;
         (async()=>{
           const json = await get_backuplist(source)
-          if (!isEntity) return
-          sendCommand(`send "${JSON.stringify(json).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`,true)
+          if (!isEntity) return {skip:true}
+          bds.sendCommand(`send "${JSON.stringify(json).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`,true)
         })()
       }
 
       if (json.type == "Logger" && json.cmd == "playerLeave") {
         const {source} = json;
-        if (!config.lastLocationLog.enabled) return
+        if (!config.lastLocationLog.enabled) return {skip:true};
         (async()=>{
           try {
             const playername = source.replace(/\(.* .* .*\)/,"")
@@ -1281,48 +1228,32 @@ rl.on('line', (_line) => {
               console.error(`[NODE-ERR]${chalk.red(e.message)}`);
           }
         })()
-        return
+        return {skip:true}
       }
 
       if (json.type == "Request" && json.cmd == "SendPwRequest") {
-        sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
-        return
+        bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+        return {skip:true}
       }
     }
-
-
-
-    console.log(`${line}`);
-    if (!line || line == "") return
-    logmng.add({"type":"BDS","data":line,"time":Date.now()})
-
-    // Websocket Broadcast
-    WSbroadcast({"type":"BDS","data":line})
-
 });
 
 
-let stop = false
 // Ctrl+C
 
 process.on('SIGINT', () => {
   console.log(chalk.green("stoping BDS..."))
-  stop = true
-  sendCommand("stop")
+  bds.exit()
 });
 
 process.on('SIGTERM', () => {
   console.log(chalk.green("stoping BDS..."))
-  stop = true
-  sendCommand("stop")
+  bds.exit()
 });
 
 // Exit
 process.on("exit",()=>{
-  if (!stop) {
-    chatmng.sendtoDis("Server",`サーバー管理ソフトが終了しました。管理者に連絡してください。`)
-  }
-  sendCommand("stop")
+ bds.exit()
 })
 
 // エラーハンドリングしてない例外処理

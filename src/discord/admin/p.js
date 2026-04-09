@@ -1,6 +1,6 @@
-function p(stdin,message,content){
+function p(bds,message,content){
     message.reply({content:"取得中..."})
         const json = JSON.stringify({"type":"getplayerinfo","playername":content}).replaceAll("\"","'").replaceAll("\\","\\\\'")
-        stdin.write(`send "${json}"\n`)
+        bds.sendCommand(`send "${json}"`)
 }
 module.exports = p
