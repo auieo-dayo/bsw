@@ -93,6 +93,51 @@ const commandlist = [
                 ]
             }
         ]
+    },
+    {
+        name: "backup",
+        description: "バックアップ系の操作をします。",
+        options: [
+            {
+                name: "backup",
+                description: "バックアップをします",
+                type: ApplicationCommandOptionType.Subcommand,
+                options: [
+                    {
+                        name: "isfull",
+                        description: "フルバックアップ？",
+                        type: ApplicationCommandOptionType.Boolean,
+                        required: false
+                    }
+                ]
+            },
+            {
+                name: "restore",
+                description: "復元します(サーバーが一度停止します。)",
+                type: ApplicationCommandOptionType.Subcommand,
+                options: [
+                    {
+                        name: "target",
+                        description: "どこまで戻すか",
+                        type: ApplicationCommandOptionType.String,
+                        required: true
+                    }
+                ]
+            },
+            {
+                name: "list",
+                description: "バックアップリストを取得します",
+                type: ApplicationCommandOptionType.Subcommand,
+                options: [
+                    {
+                        name: "target",
+                        description: "その日のバックアップリストを取得します",
+                        type: ApplicationCommandOptionType.String,
+                        required: false
+                    }
+                ]
+            }
+        ]
     }
 ]
 

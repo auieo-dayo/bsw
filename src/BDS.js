@@ -8,15 +8,7 @@ const WebSocket = require("ws");
 class BDS {
 
     constructor(BDS_path,BDS_file,logmng,wss) {
-        this.bds = spawn(BDS_file,{
-            detached: true,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            cwd: `${BDS_path}`
-        });
-        this.rl = readline.createInterface({
-            input: this.bds.stdout,
-            output: this.bds.stdin,
-        });
+
         this.logmng = logmng
         this.wss = wss
         this._events = {
@@ -26,9 +18,33 @@ class BDS {
             line: [],
             close: [],
         }
+        this.BDS_path = BDS_path
+        this.BDS_file = BDS_file
 
+        this.started = true
 
-        this.bds.on("close",(code)=>{this.emit("close",code)})
+        this.__start(this.BDS_path,this.BDS_file)
+    }
+    restart() {
+        if (this.started) return
+        this.__start(this.BDS_path,this.BDS_file)
+    }
+    __start(BDS_path,BDS_file) {
+        this.bds = spawn(BDS_file,{
+            detached: true,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            cwd: `${BDS_path}`
+        });
+        this.rl = readline.createInterface({
+            input: this.bds.stdout,
+            output: this.bds.stdin,
+        });
+        this.started = true
+
+        this.bds.on("close",(code)=>{
+            this.emit("close",code)
+            this.started = false
+        })
 
 
         this.rl.on("line",(_line)=>{
@@ -65,7 +81,7 @@ class BDS {
             }
             
             if (res?.skip) return
-            logmng.add({"type":"BDS","data":line,"time":Date.now()})
+            this.logmng.add({"type":"BDS","data":line,"time":Date.now()})
             console.log(`${line}`);
             // Websocket Broadcast
             this.WSbroadcast({"type":"BDS","data":line})

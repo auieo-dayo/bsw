@@ -658,8 +658,15 @@ const chatmng = {
     sendLongMessage(channels.chat,returnText)
   }
 }
-
-
+const sendStartEmbed= async()=>{
+  const serverStartEmbed = new discord.EmbedBuilder()
+  .setTitle("サーバーがスタートしました。")
+  .setDescription(`[${servername}]${worldname}`)
+  .setColor(0x6ff542)
+  .setTimestamp(new Date())
+  await channels.serverStatus.send({embeds:[serverStartEmbed]})
+}
+let discordstarted = false
 client.once(discord.Events.ClientReady, async () => {
     if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue(`[Discord]Login success: ${client.user.tag}`));
     
@@ -677,12 +684,8 @@ client.once(discord.Events.ClientReady, async () => {
 
         if (config.Discord.notifications.serverStatus.enabled) {
           channels.serverStatus = await client.channels.fetch(`${config.Discord.notifications.serverStatus.channelId}`,{force: true,allowUnknownGuild: true});
-          const serverStartEmbed = new discord.EmbedBuilder()
-          .setTitle("サーバーがスタートしました。")
-          .setDescription(`[${servername}]${worldname}`)
-          .setColor(0x6ff542)
-          .setTimestamp(new Date())
-          await channels.serverStatus.send({embeds:[serverStartEmbed]})
+          await sendStartEmbed()
+          discordstarted = true
         }
 
     } catch (error) {
@@ -827,6 +830,23 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
     const gamertag = options.getString("gamertag")
     await discordCommands.admin.d(gamertag,interaction,channel,Couch.dll)
   }
+  // Backup系
+  if (commandName === "backup") {
+    const sub = options.getSubcommand();
+    if (sub === "backup") {
+      const isfull = options.getBoolean("isfull")? true : false
+      await interaction.deferReply({content:`${isfull ? "フル":"差分"}バックアップ中...`})
+      discordCommands.admin.backup.backup(isfull,backup,interaction,bds,onlinePlayer)
+    }else if (sub == "restore") {
+      const target = options.getString("target")
+      await interaction.deferReply({content:`復元中...`})
+      discordCommands.admin.backup.restore(backup,target,interaction,bds)
+    }else if (sub == "list") {
+      const target = options.getString("target")
+      await interaction.deferReply({content:`復元中...`})
+      await discordCommands.admin.backup.list(backup,interaction,target)
+    }
+  }
   // Ban系
   if (commandName === "ban") {
 
@@ -835,7 +855,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
     if (sub === "list") return await discordCommands.admin.ban.list(bm,interaction)
     const gamertag = options.getString("gamertag")
     
-    if (sub == "ban") {
+    if (sub === "ban") {
       const reason = options.getString("reason")
       const expired = options.getNumber("expired")
       let expiredtime = Date.now()
@@ -980,6 +1000,7 @@ const waitBackup = setInterval(() => {
 // アドオンにPWを伝える
 
 bds.on("started",()=>{
+  if (discordstarted) sendStartEmbed()
   if (config.Discord.enabled) client.login(config.Discord.TOKEN);
   bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
   // Backup
@@ -1073,22 +1094,25 @@ bds.on('line', (line) => {
     }
 });
 
-
+let stop = false
 // Ctrl+C
 
 process.on('SIGINT', () => {
   console.log(chalk.green("stoping BDS..."))
+  stop = true
   bds.exit()
 });
 
 process.on('SIGTERM', () => {
   console.log(chalk.green("stoping BDS..."))
+  stop = true
   bds.exit()
 });
 
 // Exit
 process.on("exit",()=>{
- bds.exit()
+  stop = true
+  bds.exit()
 })
 
 // エラーハンドリングしてない例外処理
@@ -1138,8 +1162,8 @@ bds.on('close', async(code) => {
     .setTimestamp(new Date())
     await channels.serverStatus.send({embeds:[serverStopEmbed]})
     
-    await client.destroy()
+    if (stop) await client.destroy()
   }
-  
-  process.exit(0);
+  onlinePlayer.fullSync([])
+  if (stop) process.exit(0);
 });

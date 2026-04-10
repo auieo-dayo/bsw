@@ -150,5 +150,7 @@ config/config.js
 .env
 
 backup/
+!src/discord/admin/backup
+
 
 datas/

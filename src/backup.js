@@ -53,6 +53,29 @@ async function getAllFiles(dir) {
     return results;
 }
 
+async function walkDir(dir) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+
+    const result = [];
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+            const sub = await walkDir(fullPath);
+            result.push(...sub);
+        } else {
+            const stat = await fs.stat(fullPath);
+            result.push({
+                file: fullPath,
+                size: stat.size
+            });
+        }
+    }
+
+    return result;
+}
+
 class Backup {
     constructor(root,BDS_path,backup_path,worldname) {
         this.root = root
@@ -124,6 +147,23 @@ class Backup {
             return { file: file.trim().replace(new RegExp(`^${this.worldname}/`),""), size: Number(size) };
         });
         const worldpath = path.join(this.BDS,"worlds",this.worldname)
+        const ALWAYS_INCLUDE = [
+            "world_behavior_packs.json",
+            "world_resource_packs.json",
+            "behavior_packs/",
+            "resource_packs/"
+        ]
+        for (const p of ALWAYS_INCLUDE) {
+            if (!await fs.pathExists(path.join(worldpath,p))) continue;
+            const stat = await fs.stat(path.join(worldpath,p))
+            if (stat.isDirectory()) {
+                const fileInDir = await walkDir(p)
+                files.push(...fileInDir)
+            } else {
+                files.push({file:p,size:stat.size})
+            }
+        }
+
         const date = new Date()
         const fullpath = path.join(
             this.bpath,
@@ -278,7 +318,6 @@ class Backup {
 
         const date = new Date(target)
 
-        console.log(chalk.bgBlueBright())
 
         // Fullからtargetまでのバックアップを取る
         const list = backups.fullbackuplist
@@ -295,11 +334,14 @@ class Backup {
             return da - db;
         });
 
+
         // 一番近いFULL
         const startIndex = list.map(v => v.full).lastIndexOf(true);
 
+
+
         if (startIndex === -1) {
-            console.error(chalk.red("FULL backup not found"));
+            throw new Error("FULL backup not found");
         }
 
         const applyList = list.slice(startIndex);
