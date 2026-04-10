@@ -74,9 +74,7 @@ const config = {
         // プレイヤーが抜けたときにバックアップするかどうか
         "leavePlayerBackup": true,
         // 人がいないときに自動バックアップを止めるかどうか
-        "pauseIfNoPlayer": true,
-        // このプレイヤーだけの場合、バックアップをスキップ(pauseIfNoPlayerがtrueの場合のみ)
-        "skipForPlayers": []
+        "pauseIfNoPlayer": true
     },
     "webUi": {
         "port": 3000,

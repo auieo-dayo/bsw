@@ -22,7 +22,7 @@ const CouchManager = require("./src/couch");
 const { setCommands } = require("./src/discord/setGuildCommands")
 const {formatDate,msToYMDHMS} = require("./src/formatDate")
 const BDS = require("./src/BDS")
-
+const Backup = require("./src/backup")
 
 /**
   * @type {{lll:CouchManager | null,dll:CouchManager | null}}
@@ -101,7 +101,7 @@ const apis = {
   },
   getPlayerList(){return onlinePlayer.getAll() ?? []},
   getBackupList(getAllBackupList=false){
-    const blist = get_backuplist("",getAllBackupList)
+    const blist = backup.getlist("",getAllBackupList)
     return blist?.data ?? []   
   },
   sendCommand(cmd,ishidden=false){bds.sendCommand(cmd,ishidden)}
@@ -272,11 +272,12 @@ app.post('/api/bds/send',async (req,res,next)=>{
       }
       case "backup":{
         const {source,isfull,isEntity} = body
+        const list = await backup.waitForPreparationsComplete(bds)
         if (isfull) {
-          await backup(true,true)
+          await backup.backup(list,true,true,onlinePlayer,bds)
           if (isEntity && source) bds.sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cFull Backup Success"}]}`)
         } else {
-          await backup(true)
+          await backup.backup(list,false,true,onlinePlayer,bds)
           if (isEntity && source) bds.sendCommand(`tellraw ${source} {"rawtext":[{"text":"§cBackup Success"}]}`)
         }
         res.status(200).type("json").send({"status":true})
@@ -410,7 +411,7 @@ app.get('/api/dashboard',async(req,res,next)=>{
   try {
     const info = await getinfo()
     const onlines = onlinePlayer.getAll()
-    const blist = await get_backuplist("",false)
+    const blist = await backup.getlist("",false)
     res.type("json").send({info,onlines,backups:blist.data})
   }catch(e){
     next(e)
@@ -432,7 +433,7 @@ app.get('/api/info', async (req, res, next) => {
 
 app.get('/api/backuplist', async(req, res, next) => {
   try {
-    const blist = await get_backuplist("",false)
+    const blist = await backup.getlist("",false)
     res.type("json").send(JSON.stringify(blist.data,null,2))
   }catch(err) {
     next(err)
@@ -495,8 +496,11 @@ ws.on('message', (message) => {
         if (msg.data == "playerlist") {
           ws.send(JSON.stringify({"type":"server","datatype":"playerlist","data":onlinePlayer.getAll()}))
         } else if (msg.data == "backup") {
-          ws.send(JSON.stringify({"type":"server","datatype":"str","data":"BackupStarted"}))
-          backup(true)
+          ws.send(JSON.stringify({"type":"server","datatype":"str","data":"BackupStarted"}));
+          (async()=>{
+            const list = await backup.waitForPreparationsComplete(bds)
+            await backup.backup(list,false,true,onlinePlayer,bds)
+          })()
         }
       }
     } catch(e) {
@@ -854,119 +858,19 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
 const backup_path = path.join(root,"backup",servername,worldname)
 
 
-async function hashFile(filePath) {
-  const hash = crypto.createHash("sha1");
-  const stream = fs.createReadStream(filePath);
-  return new Promise((resolve, reject) => {
-    stream.on("data", d => hash.update(d));
-    stream.on("end", () => resolve(hash.digest("hex")));
-    stream.on("error", reject);
-  });
-}
+const backup = new Backup(root,BDS_path,backup_path,worldname)
 
-async function buildSnapshot(dir) {
-  const result = {};
+const latestbackup = {isfull:false,time:0}
+backup.on("start",(isfull)=>{
+  latestbackup.isfull = isfull
+  latestbackup.time = Date.now()
+  console.log(`Starting ${isfull ? "Full" : "Diff"} Backup...`)
+})
 
-  async function walk(current, relative = "") {
-    const items = await fs.readdir(current);
-    for (const item of items) {
-      const full = path.join(current, item);
-      const rel = path.join(relative, item);
-      const stat = await fs.stat(full);
-
-      if (stat.isDirectory()) {
-        await walk(full, rel);
-      } else {
-        result[rel] = await hashFile(full);
-      }
-    }
-  }
-
-  await walk(dir);
-  return result;
-}
-
-let beforeBackupTime = Date.now()
-async function backup(notskip = false, full = false) {
-  try {
-    if (!config.backup.enabled) return
-    const elapsed = Date.now() - beforeBackupTime;
-    const intervalMs = config.backup.interval * 60 * 1000;
-
-    if (!notskip && (typeof onlinePlayer.getAll()[0] == "undefined" && config.backup.pauseIfNoPlayer)) return;
-    if (!notskip && elapsed < intervalMs) return
-    const realPlayers = onlinePlayer.getAll().filter(p => !config.backup.skipForPlayers.includes(p.name));
-    if (!notskip && config.backup.pauseIfNoPlayer && realPlayers.length === 0) return;    
-    const start = Date.now();
-    beforeBackupTime = start
-    const worldDir = path.join(BDS_path, "worlds", worldname);
-
-    await fs.ensureDir(backup_path);
-
-    // snapshot ファイル
-    const snapshotFile = path.join(backup_path, "snapshot.json");
-    let oldSnap = {};
-    if (!full && await fs.pathExists(snapshotFile)) {
-      oldSnap = await fs.readJSON(snapshotFile);
-    }
-
-    // 新しいスナップショット作成
-    const newSnap = await buildSnapshot(worldDir);
-
-    // バックアップ先フォルダ
-    const date = new Date();
-    let folderName = `${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}`;
-    if (full) folderName += "_FULL";
-
-    const backup_folder = path.join(
-      backup_path,
-      `${date.getFullYear()}`,
-      `${date.getMonth() + 1}`,
-      `${date.getDate()}`,
-      folderName
-    );
-    await fs.ensureDir(backup_folder);
-
-    if (full) {
-      // フルバックアップは単純コピー
-      await fs.copy(worldDir, backup_folder);
-    } else {
-      // 差分コピー
-      for (const [rel, hash] of Object.entries(newSnap)) {
-        if (oldSnap[rel] !== hash) {
-          const src = path.join(worldDir, rel);
-          const dest = path.join(backup_folder, rel);
-          await fs.ensureDir(path.dirname(dest));
-          await fs.copy(src, dest);
-        }
-      }
-
-      // 削除されたファイルをバックアップ側でも削除
-      for (const rel of Object.keys(oldSnap)) {
-        if (!newSnap[rel]) {
-          const delPath = path.join(backup_folder, rel);
-          if (await fs.pathExists(delPath)) {
-            await fs.remove(delPath);
-          }
-        }
-      }
-
-      // snapshot 更新
-      await fs.writeJSON(snapshotFile, newSnap, { spaces: 2 });
-    }
-
-    const stop = Date.now();
-    const log = `BackupSuccessful(${full ? "FULL" : "diff"})(${((stop - start)/1000).toFixed(2)} Seconds)`;
+backup.on("stop",()=>{
+    const log = `BackupSuccessful(${latestbackup.isfull ? "FULL" : "diff"})(${((Date.now() - latestbackup.time)/1000).toFixed(2)} Seconds)`;
     if (config.console.backupLogToConsole) console.log(chalk.bgBlue(log));
-
-    WSbroadcast({ type: "server", datatype: "str", data: log })
-
-    logmng.add({"type":"server","datatype":"str","data":`${log}`,"time":Date.now()})
-
-  } catch (e) {
-    console.error(`[NODE-ERR]${chalk.red(e.message)}`);
-  }
-}
+})
 
 // 自動0時フルバックアップ
 
@@ -981,14 +885,16 @@ function scheduleDailyFullBackup() {
   );
   const msUntilMidnight = nextMidnight - now;
 
-  setTimeout(() => {
+  setTimeout(async() => {
     if (config.console.backupLogToConsole) console.log(chalk.bgMagenta("Starting daily FULL backup..."));
-    backup(true, true); // notskip=true, full=true
+    const list = await backup.waitForPreparationsComplete(bds)
+    await backup.backup(list,true, true,onlinePlayer,bds); // notskip=true, full=true
 
     // その後は24時間ごとに繰り返す
-    setInterval(() => {
+    setInterval(async() => {
       if (config.console.backupLogToConsole) console.log(chalk.bgMagenta("Starting daily FULL backup..."));
-      backup(true, true);
+      const list = await backup.waitForPreparationsComplete(bds)
+      backup.backup(list,true, true,onlinePlayer,bds); // notskip=true, full=true
     }, 24 * 60 * 60 * 1000);
 
   }, msUntilMidnight);
@@ -997,85 +903,6 @@ function scheduleDailyFullBackup() {
 scheduleDailyFullBackup();
 
 
-
-async function get_backuplist(source,returnfullbackup=false) {
-  const date = new Date();
-  const yyyy_now = date.getFullYear();
-  const MM_now   = date.getMonth() + 1;
-  const dd_now   = date.getDate();
-
-  await fs.ensureDir(backup_path);
-
-  const all_list = [];
-  const today_list = [];
-
-  // helper: ディレクトリだけ返す
-  const onlyDirs = async (target) => {
-    const list = await fs.readdir(target);
-    const dirs = [];
-    for (const item of list) {
-      const p = path.join(target, item);
-      try {
-        if ((await fs.stat(p)).isDirectory()) dirs.push(item);
-      } catch(e) {
-        console.error(`[GetBackups] ${e.message}`)
-      }
-    }
-    return dirs;
-  };
-
-  for (const yyyy of await onlyDirs(backup_path)) {
-    for (const MM of await onlyDirs(path.join(backup_path, yyyy))) {
-      for (const dd of await onlyDirs(path.join(backup_path, yyyy, MM))) {
-        for (const folder of await onlyDirs(path.join(backup_path, yyyy, MM, dd))) {
-
-          const isFull = folder.includes("_FULL");        // フルバックアップ判定
-          const folderName = folder.replace("_FULL", ""); // 日付部分だけ取り出す
-          const [hh, mm, ss] = folderName.split("-");
-
-          // hh-mm-ss が正常じゃないフォルダも無視
-          if (!hh || !mm || !ss) continue;
-
-          const fullpath = path.join(yyyy, MM, dd, folder);
-          const full_date_ja =
-            `${yyyy}年${MM}月${dd}日 ${hh}時${mm}分${ss}秒` +
-            (isFull ? " (FULL)" : "");
-
-          const item = {
-            fullpath: fullpath,
-            date: {
-              yyyy: Number(yyyy),
-              MM: Number(MM),
-              dd: Number(dd),
-              hh: Number(hh),
-              mm: Number(mm),
-              ss: Number(ss)
-            },
-            fullpathja: full_date_ja,
-            full: isFull
-          };
-
-          all_list.push(item);
-
-          // 今日分だけ
-          if (yyyy == yyyy_now && MM == MM_now && dd == dd_now) {
-            today_list.push(item);
-          }
-        }
-      }
-    }
-  }
-  return {
-      type: "backuplist",
-      source: source,
-      data: {
-        allbackup: all_list.length,
-        today: today_list.length,
-        todaybackuplist: today_list,
-        ...(returnfullbackup && { fullbackuplist: all_list })
-      }
-  }
-}
 
 
 
@@ -1118,7 +945,7 @@ try {
 }
 };
 
-backup(true)
+// Addon Sync
 addon_copy()
 
 const bm = new BanManager(root)
@@ -1129,6 +956,9 @@ const bm = new BanManager(root)
  */
 let bds = new BDS(BDS_path,BDS_file,logmng,wss)
 
+
+
+
 // 初回Backup
 let startedBackup = false;
 
@@ -1137,8 +967,9 @@ const waitBackup = setInterval(() => {
     startedBackup = true;
     clearInterval(waitBackup);
     // 定期バックアップ
-    setInterval(() => {
-      backup();
+    setInterval(async() => {
+      const list = await backup.waitForPreparationsComplete(bds)
+      await backup.backup(list,false,false,onlinePlayer,bds);
     }, 1000 * 60 * BackupInterval);
   }
 }, 500); // 0.5秒ごとにチェック
@@ -1151,6 +982,10 @@ const waitBackup = setInterval(() => {
 bds.on("started",()=>{
   if (config.Discord.enabled) client.login(config.Discord.TOKEN);
   bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+  // Backup
+  backup.waitForPreparationsComplete(bds).then((list)=>{
+    backup.backup(list,false,true,onlinePlayer,bds)
+  })
 })
 // BDS Spawn
 bds.on("spawn",(json)=>{
@@ -1181,7 +1016,7 @@ bds.on("leave",(json)=>{
 
   onlinePlayer.leave(json.name)
   LLtoDis(json.name,"logout")
-  if (!bm.isbanned(json.name) && config.backup.leavePlayerBackup) backup(true);
+  if (!bm.isbanned(json.name) && config.backup.leavePlayerBackup) backup.waitForPreparationsComplete(bds).then((list)=>backup.backup(list,false,false,onlinePlayer,bds));
   if (config.console.leavePlayerLogToConsole) console.log(chalk.bgBlue(`PlayerLeave:${json.name}`))
 })
 
@@ -1205,7 +1040,7 @@ bds.on('line', (line) => {
       if (json.type == "servercommand" && json.cmd == "backuplist") {
         const {source,isEntity} = json;
         (async()=>{
-          const json = await get_backuplist(source)
+          const json = await backup.getlist(source)
           if (!isEntity) return {skip:true}
           bds.sendCommand(`send "${JSON.stringify(json).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`,true)
         })()

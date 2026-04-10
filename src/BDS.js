@@ -19,15 +19,16 @@ class BDS {
         });
         this.logmng = logmng
         this.wss = wss
+        this._events = {
+            spawn: [],
+            leave: [],
+            started: [],
+            line: [],
+            close: [],
+        }
 
-        this._spawn = ()=>{}
-        this._leave = ()=>{}
-        this._started = ()=>{}
-        this._line = ()=>{}
-        this._close = ()=>{}
 
-        this.bds.on("close",(code)=>{if (typeof this._close == "function" ) this._close(code)})
-
+        this.bds.on("close",(code)=>{this.emit("close",code)})
 
 
         this.rl.on("line",(_line)=>{
@@ -36,7 +37,7 @@ class BDS {
             if (!line.trim()) return
 
             let res = ""
-            if (typeof this._line == "function" ) res =  this._line(line)
+            res = this.emit("line",line)
 
             if (/^\[.* INFO\] Version: .*$/.test(line)) {
                 this.BDSver = line.match(/Version:\s*([0-9].*)/)[1]
@@ -45,7 +46,7 @@ class BDS {
             if (/^\[.* INFO\] Server started./.test(line)) {
                 if (config.console.bswSystemLogToConsole) console.log(chalk.bgBlue("Server Started"))
                 this.server_started = true
-                if (typeof this._started == "function" )this._started()
+                this.emit("started")
             }
 
 
@@ -53,14 +54,14 @@ class BDS {
                 const playername = String(line.replace(/^\[.* INFO\] Player Spawned: /,"").replace(/ xuid:.*$/,""))
                 // const xuid = Number(line.replace(/^\[.* INFO\] Player Spawned: .* xuid: /,"").replace(/, pfid: .*$/,""))
                 const json = {"name":playername,"tags":[""]}
-                if (typeof this._spawn == "function" ) res = this._spawn(json)
+                this.emit("spawn",json)
             }
 
             if (/^\[.* INFO\] Player disconnected: .*, xuid: .*, pfid:.*$/.test(line)) {
                 const playername = String(line.replace(/^\[.* INFO\] Player disconnected: /,"").replace(/, xuid: .*, pfid: .*$/,""))
                 // const xuid = Number(line.replace(/^\[.* INFO\] Player disconnected: .*, xuid: /,"").replace(/, pfid: .*$/,""))
                 const json = {"name":playername,"tags":[""]}
-                if (typeof this._leave == "function" ) res =  this._leave(json)
+                this.emit("leave",json)
             }
             
             if (res?.skip) return
@@ -76,9 +77,36 @@ class BDS {
      * @param {Function} callback 
      * @returns 
      */
-    on(event,callback) {
-        if (!event) return
-        this[`_${event}`] = callback
+    on(event, callback) {
+        if (!this._events[event]) {
+            this._events[event] = []
+        }
+        this._events[event].push(callback)
+    }
+    /**
+     * 
+     * @param {"started"|"spawn"|"leave"|"line"|"close"} event 
+     * @param {Function} callback 
+     * @returns 
+     */
+    off(event, callback) {
+        if (!this._events[event]) return
+        this._events[event] = this._events[event].filter(fn => fn !== callback)
+    }
+    /**
+     * 
+     * @param {"started"|"spawn"|"leave"|"line"|"close"} event 
+     * @param  {...any} args 
+     * @returns 
+     */
+    emit(event, ...args) {
+        if (!this._events[event]) return
+        let skip = false
+        for (const fn of this._events[event]) {
+            const res = fn(...args)
+            if (res?.skip) skip = true 
+        }
+        return {skip}
     }
 
     exit() {
