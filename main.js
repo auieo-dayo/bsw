@@ -6,7 +6,6 @@ dotenv.config();
 const PropertiesReader = require('properties-reader');
 const fs = require("fs-extra")
 const chalk = require('chalk');
-const crypto = require("crypto");
 const discord = require("discord.js")
 const { v4: uuidv4 } = require('uuid');
 
