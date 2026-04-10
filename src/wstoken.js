@@ -21,6 +21,7 @@ class wstoken {
         if (!this.tokens.has(token)) return {passed:false,token}
         const id = this.tokens.get(token)
         clearTimeout(id)
+        this.tokens.delete(token)
         return {passed:true,token}
     }
 }

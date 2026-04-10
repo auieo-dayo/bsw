@@ -53,21 +53,23 @@ async function getAllFiles(dir) {
     return results;
 }
 
-async function walkDir(dir) {
+async function walkDir(dir, relativePath = "") {
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
     const result = [];
 
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
+        const relPath = path.join(relativePath, entry.name);
 
         if (entry.isDirectory()) {
-            const sub = await walkDir(fullPath);
+            const sub = await walkDir(fullPath, relPath);
             result.push(...sub);
         } else {
             const stat = await fs.stat(fullPath);
+
             result.push({
-                file: fullPath,
+                file: relPath,   // ←重要：相対パスで保存
                 size: stat.size
             });
         }
@@ -114,7 +116,7 @@ class Backup {
                     return {skip:true}
                 };
                 
-                if (collecting && !line.includes(":") || !line.includes(",")) return
+                if (collecting && (!line.includes(":") || !line.includes(","))) return
                 if (collecting) {
                     cleanup()
                     resolve(line)
@@ -157,7 +159,7 @@ class Backup {
             if (!await fs.pathExists(path.join(worldpath,p))) continue;
             const stat = await fs.stat(path.join(worldpath,p))
             if (stat.isDirectory()) {
-                const fileInDir = await walkDir(p)
+                const fileInDir = await walkDir(worldpath,p)
                 files.push(...fileInDir)
             } else {
                 files.push({file:p,size:stat.size})
