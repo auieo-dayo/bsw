@@ -11,7 +11,7 @@ async function d(playername,message,channel,couch) {
   embed.setTimestamp(new Date())
 
   embed.setTitle(`[${playername}]の死亡情報`)
-  if (config.deathLocationLog.enable) {
+  if (config.deathLocationLog.enabled) {
     const res = await couch.post("/_find",{ "selector": { "playername": `${playername}` }, "sort": [ { "timestamp": "desc" } ], "limit": 10 })
     const deathdata = res.data.docs
     if (!deathdata[0]) {
