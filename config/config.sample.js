@@ -79,7 +79,9 @@ const config = {
     "webUi": {
         "port": 3000,
         "username":"admin",
-        "password":"admin"
+        "password":"admin",
+        // リバースプロキシを信頼するか(boolean | number)
+        "trustProxy": false
     },
     // 退出時に座標を自動で保存
     "lastLocationLog": {

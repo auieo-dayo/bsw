@@ -199,6 +199,7 @@ const { getCpuUsage } = require("./src/cpuusage");
 const { default: rateLimit } = require('express-rate-limit');
 
 
+app.set('trust proxy', config.webUi.trustProxy);
 
 
 
