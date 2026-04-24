@@ -320,6 +320,8 @@ class Backup {
 
         const date = new Date(target)
 
+        console.log(chalk.bgGreen("StartRestore from Backups..."))
+        console.log(chalk.bgGreen(`Target:${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`))
 
         // Fullからtargetまでのバックアップを取る
         const list = backups.fullbackuplist
@@ -340,11 +342,10 @@ class Backup {
         // 一番近いFULL
         const startIndex = list.map(v => v.full).lastIndexOf(true);
 
-
-
         if (startIndex === -1) {
             throw new Error("FULL backup not found");
         }
+
 
         const applyList = list.slice(startIndex);
 
@@ -355,17 +356,18 @@ class Backup {
         await fs.ensureDir(restorePath);
 
         for (const backup of applyList) {
-        const dir = path.join(this.bpath, backup.fullpath);
-        const files = await getAllFiles(dir);
+            const dir = path.join(this.bpath, backup.fullpath);
+            const files = await getAllFiles(dir);
 
-        for (const file of files) {
-            const src = path.join(dir, file);
-            const dest = path.join(restorePath, file);
+            for (const file of files) {
+                const src = path.join(dir, file);
+                const dest = path.join(restorePath, file);
 
-            await fs.ensureDir(path.dirname(dest));
-            await fs.copy(src, dest);
+                await fs.ensureDir(path.dirname(dest));
+                await fs.copy(src, dest);
+            }
         }
-        }
+        console.log(chalk.bgGreen(`Complated Restore from Backups`))
     }
     /**
      * 
