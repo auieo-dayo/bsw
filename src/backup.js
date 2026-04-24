@@ -367,7 +367,7 @@ class Backup {
                 await fs.copy(src, dest);
             }
         }
-        console.log(chalk.bgGreen(`Complated Restore from Backups`))
+        console.log(chalk.bgGreen(`Completed Restore from Backups`))
     }
     /**
      * 
