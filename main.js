@@ -807,9 +807,40 @@ client.on(discord.Events.MessageCreate, message => {
 
 });
 
-// Discordスラッシュコマンドイベント
-
+/**
+ * @type {{ data: {value:number, name:string}[], last: number }}
+ */
+const backupCache = {data:[],last:0}
+async function getBackupCache() {
+  const diff =  Date.now() - backupCache.last
+  if (1000*30 <= diff) {
+    const list = await backup.getlist(null,true)
+    backupCache.data = list.data.fullbackuplist.map((v)=>{
+      const Bdate = new Date(`${v.date.yyyy}/${v.date.MM}/${v.date.dd} ${v.date.hh}:${v.date.mm}:${v.date.ss}`)
+      const j = {value:String(Bdate.getTime()),name:v.fullpathja}
+      return j
+    })
+    backupCache.last = Date.now()  
+  }
+  return backupCache.data
+  
+}
+// Discordイベント
 client.on(discord.Events.InteractionCreate,async (interaction)=>{
+  // AutoCompleteの設定
+  if (interaction.isAutocomplete()) {
+    const focused = interaction.options.getFocused();
+    const cachelist = await getBackupCache()
+    let blist = cachelist.sort((a,b)=>b.value - a.value)
+    if (focused) {
+      blist = blist.filter((v)=>`${v.value}`.startsWith(focused))
+    }
+    blist = blist.slice(0,25)
+    return await interaction.respond(blist)
+  }
+
+  // コマンド以外ならreturn
+
   if (!interaction.isCommand()) return;
   const { commandName, channel, options } = interaction;
   

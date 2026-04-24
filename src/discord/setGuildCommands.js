@@ -124,6 +124,7 @@ const commandlist = [
                         name: "target",
                         description: "どこまで戻すか",
                         type: ApplicationCommandOptionType.String,
+                        autocomplete: true,
                         required: true
                     }
                 ]
@@ -132,14 +133,6 @@ const commandlist = [
                 name: "list",
                 description: "バックアップリストを取得します",
                 type: ApplicationCommandOptionType.Subcommand,
-                options: [
-                    {
-                        name: "target",
-                        description: "その日のバックアップリストを取得します",
-                        type: ApplicationCommandOptionType.String,
-                        required: false
-                    }
-                ]
             }
         ]
     }
