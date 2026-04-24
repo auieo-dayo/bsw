@@ -1,7 +1,7 @@
 const { ApplicationCommandOptionType } = require("discord.js")
 
 /**
- * @type {import("discord.js").ApplicationCommandDataResolvable}
+ * @type {import("discord.js").ApplicationCommandDataResolvable[]}
  */
 const commandlist = [
     {
@@ -10,6 +10,7 @@ const commandlist = [
     },
     {
         name:"p",
+        defaultMemberPermissions:"Administrator",
         description: "特定プレイヤーの情報を取得します。(特定チャンネルのみ)",
         options:[
             {
@@ -22,6 +23,7 @@ const commandlist = [
     },
     {
         name:"d",
+        defaultMemberPermissions:"Administrator",
         description: "特定プレイヤーの死亡ログ取得します。(特定チャンネルのみ)",
         options:[
             {
@@ -34,6 +36,7 @@ const commandlist = [
     },
     {
         name:"ban",
+        defaultMemberPermissions:"Administrator",
         description: "BAN系の操作。(特定チャンネルのみ)",
         options:[
             {
@@ -96,6 +99,7 @@ const commandlist = [
     },
     {
         name: "backup",
+        defaultMemberPermissions:"Administrator",
         description: "バックアップ系の操作をします。",
         options: [
             {
@@ -140,7 +144,12 @@ const commandlist = [
         ]
     }
 ]
-
+/**
+ * 
+ * @param {import("discord.js").Client} client 
+ * @param {*} guildid 
+ * @returns 
+ */
 async function setCommands(client,guildid) {
     const res = await client.application.commands.set(commandlist,String(guildid))
     return res
