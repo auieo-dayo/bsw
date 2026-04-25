@@ -133,7 +133,7 @@ class Backup {
             bds.on("line", onLine)
         })
     }
-    async backup(list,isfull=false,notskip=false,PlayerStore,bds,logmng) {
+    async backup(list,isfull=false,notskip=false,PlayerStore,bds) {
         if (!config.backup.enabled) return bds.sendCommand("save resume")
         if (!list && !isfull) return bds.sendCommand("save resume")
 
