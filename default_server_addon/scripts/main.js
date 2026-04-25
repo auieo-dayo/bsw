@@ -1,12 +1,9 @@
-/* eslint-disable no-unused-vars */
- 
-
-
 // Bedrock Server Wrapper  - Default-Server-Addon
 import {CommandPermissionLevel, system , world, CustomCommandParamType, PlayerCursorInventoryComponent, Entity, BlockTypes, Player, EntityComponentTypes, DimensionType, DimensionTypes, EffectType, EffectTypes, EntityDamageCause, EntityComponent, EquipmentSlot, InputButton, GameMode, ItemType, ItemTypes, ItemComponentTypes } from"@minecraft/server";
 import * as ui from "@minecraft/server-ui";
 import { SecretString, transferPlayer } from "@minecraft/server-admin";
 import * as net from "@minecraft/server-net"
+let port = NaN
 
 function btoa(str) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -38,18 +35,18 @@ let BSW_SendPW = null
 
 
 
-console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+console.log(JSON.stringify({"type":"Request","cmd":"SyncConfRequest","source":``,"data":"","isEntity":false}))
 
 function post(body) {
     system.run(async()=>{
-        if (!BSW_SendPW) {
+        if (!BSW_SendPW || !port) {
             console.error("Don't have SendPW")
-            console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+            console.log(JSON.stringify({"type":"Request","cmd":"SyncConfRequest","source":``,"data":"","isEntity":false}))
         }
 
         try {
             if (!body.type) return
-            const req = new net.HttpRequest(`http://localhost:3000/api/bds/send`)
+            const req = new net.HttpRequest(`http://localhost:${port || 3000}/api/bds/send`)
             req.setMethod("Post")
             req.addHeader("authorization",BSW_SendPW)
             req.addHeader('Content-Type', 'application/json')
@@ -61,7 +58,7 @@ function post(body) {
                 console.error(`[Sending] - ${res.status}`)
                 world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました:${res.status}\n管理者に連絡してください..."}]}`)
             }
-            if (res.status === 401) console.log(JSON.stringify({"type":"Request","cmd":"SendPwRequest","source":``,"data":"","isEntity":false}))
+            if (res.status == 401 || res.status == 111) console.log(JSON.stringify({"type":"Request","cmd":"SyncConfRequest","source":``,"data":"","isEntity":false}))
         } catch(e) {
             console.error(e.message)
             world.getDimension("overworld").runCommand(`titleraw @a actionbar {"rawtext":[{"text":"§a送信に失敗しました\n管理者に連絡してください..."}]}`)
@@ -248,8 +245,9 @@ system.beforeEvents.startup.subscribe((ev)=>{
 
                 }
                 post(returnjson)
-            } else if (json.type == "syncSendPW") {
-                const pass = json.data
+            } else if (json.type == "syncConf") {
+                const pass = json.data.pass
+                port = json.data.port
                 BSW_SendPW = new SecretString(`Basic ${btoa(`BDS_Send:${pass}`)}`)
                 console.log(`Catch SendPW`)
             }

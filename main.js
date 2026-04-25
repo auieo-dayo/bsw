@@ -1046,7 +1046,7 @@ const waitBackup = setInterval(() => {
 bds.on("started",()=>{
   if (discordstarted) sendStartEmbed()
   if (config.Discord.enabled) client.login(config.Discord.TOKEN);
-  bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+  bds.sendCommand(`send "${JSON.stringify({type:"syncConf","data":{pass:BDSsendPass,port:config.webUi.port}}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
   // Backup
   backup.waitForPreparationsComplete(bds).then((list)=>{
     backup.backup(list,false,true,onlinePlayer,bds)
@@ -1131,8 +1131,8 @@ bds.on('line', (line) => {
         return {skip:true}
       }
 
-      if (json.type == "Request" && json.cmd == "SendPwRequest") {
-        bds.sendCommand(`send "${JSON.stringify({type:"syncSendPW","data":BDSsendPass}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
+      if (json.type == "Request" && json.cmd == "SyncConfRequest") {
+        bds.sendCommand(`send "${JSON.stringify({type:"syncConf","data":{pass:BDSsendPass,port:config.webUi.port}}).replaceAll("\"","'").replaceAll("\\","\\\\'")}"`)
         return {skip:true}
       }
     }
