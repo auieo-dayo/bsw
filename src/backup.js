@@ -133,7 +133,7 @@ class Backup {
             bds.on("line", onLine)
         })
     }
-    async backup(list,isfull=false,notskip=false,PlayerStore,bds) {
+    async backup(list,isfull=false,notskip=false,PlayerStore,bds,logmng) {
         if (!config.backup.enabled) return bds.sendCommand("save resume")
         if (!list && !isfull) return bds.sendCommand("save resume")
 
@@ -321,7 +321,9 @@ class Backup {
         const date = new Date(target)
 
         console.log(chalk.bgGreen("StartRestore from Backups..."))
-        console.log(chalk.bgGreen(`Target:${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`))
+        const datetext = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+        console.log(chalk.bgGreen(`Target:${datetext}`))
+        this.emit("restoreStart",date)
 
         // Fullからtargetまでのバックアップを取る
         const list = backups.fullbackuplist
@@ -368,10 +370,11 @@ class Backup {
             }
         }
         console.log(chalk.bgGreen(`Completed Restore from Backups`))
+        this.emit("restoreEnd",date)
     }
     /**
      * 
-     * @param {"start"|"stop"} event 
+     * @param {"start"|"stop"|"restoreStart"|"restoreEnd"} event 
      * @param {Function} callback 
      */
     on(event, callback) {
@@ -382,7 +385,7 @@ class Backup {
     }
     /**
      * 
-     * @param {"start"|"stop"} event 
+     * @param {"start"|"stop"|"restoreStart"|"restoreEnd"} event 
      * @param {Function} callback 
      */
     off(event, callback) {
@@ -391,7 +394,7 @@ class Backup {
     }
     /**
      * 
-     * @param {"start"|"stop"} event 
+     * @param {"start"|"stop"|"restoreStart"|"restoreEnd"} event 
      * @param {...any} args 
      */
     emit(event, ...args) {

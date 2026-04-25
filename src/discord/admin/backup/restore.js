@@ -11,7 +11,7 @@ function normalizeDateInput(v) {
   return v;
 }
 
-function r (backup,target,message,bds) {
+function r (backup,target,message,bds,logmng) {
     if (!target) return message.editReply("Targetを指定してください")
     const targetdate= new Date(normalizeDateInput(target))
     if (targetdate == "Invalid Date") return message.editReply("日付が無効です")
@@ -20,7 +20,7 @@ function r (backup,target,message,bds) {
     const onclose = ()=>{
         bds.off(onclose)
         setTimeout(() => {
-            backup.restore(targetdate)
+            backup.restore(targetdate,logmng)
                 .then(()=>{
                     message.editReply("復元完了しました、再起動します。")
                 })

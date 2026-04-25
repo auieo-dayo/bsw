@@ -871,7 +871,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
     }else if (sub == "restore") {
       const target = options.getString("target")
       await interaction.deferReply({content:`復元中...`})
-      discordCommands.admin.backup.restore(backup,target,interaction,bds)
+      discordCommands.admin.backup.restore(backup,target,interaction,bds,logmng)
     }else if (sub == "list") {
       const target = options.getString("target")
       await interaction.deferReply({content:`復元中...`})
@@ -916,11 +916,24 @@ backup.on("start",(isfull)=>{
   latestbackup.isfull = isfull
   latestbackup.time = Date.now()
   console.log(`Starting ${isfull ? "Full" : "Diff"} Backup...`)
+  logmng.add({type:"server",datatype:"str",data:`${isfull ? "Full" : "Diff"} Backup Start`,isfull,time:Date.now()})
 })
 
 backup.on("stop",()=>{
     const log = `BackupSuccessful(${latestbackup.isfull ? "FULL" : "diff"})(${((Date.now() - latestbackup.time)/1000).toFixed(2)} Seconds)`;
     if (config.console.backupLogToConsole) console.log(chalk.bgBlue(log));
+    logmng.add({type:"server",datatype:"str",data:`${log}`,isfull:latestbackup.isfull,time:Date.now()})
+})
+
+// Restore
+
+backup.on("restoreStart",(date)=>{
+  const datetext = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()} - ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+  logmng.add({type:"server",datatype:"str",data:`Restore Start(Target:${datetext})`,time:Date.now()})
+})
+
+backup.on("restoreEnd",()=>{
+  logmng.add({type:"server",datatype:"str",data:`Restore End`,time:Date.now()})
 })
 
 // 自動0時フルバックアップ
