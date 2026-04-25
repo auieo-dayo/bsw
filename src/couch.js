@@ -17,12 +17,12 @@ class CouchManager {
             const exists = res.data.indexes.some(v => v.name === "player_timestamp_index");
 
             if (!exists) {
-            couch.post("/_index", {
-                index: {
-                fields: ["playername", "timestamp"]
-                },
-                name: "player_timestamp_index"
-            });
+                this.couch.post("/_index", {
+                    index: {
+                    fields: ["playername", "timestamp"]
+                    },
+                    name: "player_timestamp_index"
+                });
             }
         }).catch(console.error);
         
