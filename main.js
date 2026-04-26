@@ -633,7 +633,11 @@ async function PlayerinfotoDis(json) {
   await channels.admin.send({ embeds: [embed] });
 }
 
-
+const parseMessageFromMC = (msg="")=>msg.replaceAll("<@","<@ ")
+  .replaceAll("<&","<& ")
+  .replaceAll("@everyone","@ everyone")
+  .replaceAll("@here","@ here")
+  .replaceAll("discord.gg/","discord .gg")
 
 const chatmng = {
   "sendtoMC": async(name,message) => {
@@ -647,7 +651,7 @@ const chatmng = {
   },
   "sendtoDis": async(name,message) => {
     if (config.console.chatLogToConsole) console.log(chalk.yellow(`${name}:${message}`))
-    const returnText = `\`${name}\`:${message}`
+    const returnText = `\`${name}\`:${parseMessageFromMC(message)}`
 
     WSbroadcast({ type: "chat", data: `${name}:${message}`})
     logmng.add({"type":"chat","data":`${name}:${message}`,"player":`${name}`,"message":`${message}`,"source":"Minecraft","time":Date.now()})
