@@ -827,6 +827,11 @@ async function getBackupCache() {
 }
 // Discordイベント
 client.on(discord.Events.InteractionCreate,async (interaction)=>{
+  const { channel } = interaction
+  // 対象チャンネル以外ならスキップ
+  if(![config.Discord.notifications.chat.channelId,
+       config.Discord.notifications.serverStatus.enabled,
+       config.Discord.notifications.toAdmin.channelId].includes(channel.id))
   // AutoCompleteの設定
   if (interaction.isAutocomplete()) {
     const focused = interaction.options.getFocused();
@@ -842,7 +847,7 @@ client.on(discord.Events.InteractionCreate,async (interaction)=>{
   // コマンド以外ならreturn
 
   if (!interaction.isCommand()) return;
-  const { commandName, channel, options } = interaction;
+  const { commandName, options } = interaction;
   
   // PlayerListの場合
   if (commandName == "pl" && [config.Discord.notifications.chat.channelId,config.Discord.notifications.toAdmin.channelId].includes(channel.id)) return await discordCommands.chat.pl(onlinePlayer,interaction);
